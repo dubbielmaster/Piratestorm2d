@@ -3,40 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Pirate Storm Mobile - v0.02</title>
+    <title>Pirate Storm Mobile - v0.03</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body, html { width: 100%; height: 100%; overflow: hidden; background-color: #000; }
         canvas { display: block; touch-action: none; }
         #ui { position: absolute; top: 15px; left: 15px; color: #ffffff; font-family: Arial, sans-serif; pointer-events: none; }
         #version { font-size: 12px; color: #ffd700; font-weight: bold; text-transform: uppercase; }
-        #stats { font-size: 14px; margin-top: 5px; text-shadow: 1px 1px 2px black; }
+        #stats { font-size: 13px; margin-top: 5px; text-shadow: 1px 1px 2px black; }
     </style>
 </head>
 <body>
 
     <div id="ui">
-        <div id="version">v0.02 - Cañones y Enemigos</div>
-        <div id="stats">Toca para moverte y disparar a los enemigos</div>
+        <div id="version">v0.03 - Target & Puerto Isométrico</div>
+        <div id="stats">Toca el agua para moverte | Toca un enemigo para fijar objetivo</div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
 
     <script>
-        // =============================================================
-        // CONFIGURACIÓN DE CAÑONES Y ARMAMENTO (Ajustable)
-        // =============================================================
+        // CONFIGURACIÓN DE CAÑONES
         const CANNON_CONFIG = {
-            damage: 25,          // Daño por bala
-            range: 350,          // Alcance máximo en píxeles
-            fireRate: 400,       // Tiempo de recarga en milisegundos
-            bulletSpeed: 7,      // Velocidad de la bala
-            cannonsCount: 2      // Número de cañones por disparo
+            damage: 20,
+            range: 300,
+            fireRate: 500,
+            bulletSpeed: 8
         };
 
-        // =============================================================
-        // 1. CLASE OCÉANO (OLEAJE MEJORADO)
-        // =============================================================
+        // 1. OCÉANO
         class Ocean {
             constructor(canvas) {
                 this.canvas = canvas;
@@ -44,9 +39,7 @@
                 this.time = 0;
             }
 
-            update() {
-                this.time += 0.005;
-            }
+            update() { this.time += 0.005; }
 
             draw() {
                 const ctx = this.ctx;
@@ -84,14 +77,66 @@
                         ctx.stroke();
                     }
                 });
+                ctx.restore();
+            }
+        }
+
+        // 2. PUERTO E ISLA (Estructura isométrica 3D Prerrenderizada)
+        class Port {
+            draw(ctx) {
+                ctx.save();
+                
+                // Arena / Costa de la Isla
+                ctx.fillStyle = "#e0cda3";
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(220, 0);
+                ctx.lineTo(170, 100);
+                ctx.lineTo(100, 160);
+                ctx.lineTo(0, 180);
+                ctx.closePath();
+                ctx.fill();
+
+                // Vegetación / Tierra
+                ctx.fillStyle = "#2d6a4f";
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(180, 0);
+                ctx.lineTo(130, 80);
+                ctx.lineTo(70, 120);
+                ctx.lineTo(0, 140);
+                ctx.closePath();
+                ctx.fill();
+
+                // Muelle de Piedra (Vista isométrica)
+                ctx.fillStyle = "#7f8c8d";
+                ctx.fillRect(80, 100, 70, 15); // Brazo muelle
+                ctx.fillRect(140, 100, 15, 40);
+
+                // Edificios del Puerto (Efecto 3D simple)
+                // Casa 1
+                ctx.fillStyle = "#a84227"; // Techo
+                ctx.fillRect(30, 30, 35, 25);
+                ctx.fillStyle = "#d5bdaf"; // Pared
+                ctx.fillRect(30, 55, 35, 15);
+
+                // Casa 2
+                ctx.fillStyle = "#3a5a40"; // Techo
+                ctx.fillRect(85, 20, 40, 30);
+                ctx.fillStyle = "#e9ecef"; // Pared
+                ctx.fillRect(85, 50, 40, 18);
+
+                // Torre de defensa
+                ctx.fillStyle = "#495057";
+                ctx.beginPath();
+                ctx.arc(145, 120, 12, 0, Math.PI * 2);
+                ctx.fill();
 
                 ctx.restore();
             }
         }
 
-        // =============================================================
-        // 2. CLASE BALA DE CAÑÓN
-        // =============================================================
+        // 3. BALA DE CAÑÓN
         class CannonBall {
             constructor(startX, startY, targetX, targetY) {
                 this.x = startX;
@@ -109,9 +154,7 @@
                 this.x += this.vx;
                 this.y += this.vy;
 
-                // Destruir bala si supera el alcance
-                const dist = Math.hypot(this.x - this.startX, this.y - this.startY);
-                if (dist > CANNON_CONFIG.range) {
+                if (Math.hypot(this.x - this.startX, this.y - this.startY) > CANNON_CONFIG.range) {
                     this.active = false;
                 }
             }
@@ -124,24 +167,27 @@
             }
         }
 
-        // =============================================================
-        // 3. CLASE ENEMIGO (Monstruo / Barco Pirata)
-        // =============================================================
+        // 4. ENEMIGO
         class Enemy {
-            constructor(x, y) {
+            constructor(id, x, y) {
+                this.id = id;
                 this.x = x;
                 this.y = y;
                 this.maxHp = 100;
                 this.hp = 100;
-                this.radius = 20;
+                this.radius = 22;
                 this.angle = Math.random() * Math.PI * 2;
-                this.speed = 0.8;
+                this.speed = 0.6;
             }
 
             update() {
-                // Movimiento errático en el agua
                 this.x += Math.cos(this.angle) * this.speed;
                 this.y += Math.sin(this.angle) * this.speed;
+
+                // Evitar entrar al puerto
+                if (this.x < 180 && this.y < 180) {
+                    this.angle += Math.PI / 2;
+                }
 
                 if (Math.random() < 0.02) {
                     this.angle += (Math.random() - 0.5);
@@ -150,24 +196,37 @@
 
             takeDamage(amount) {
                 this.hp -= amount;
-                if (this.hp <= 0) {
-                    this.hp = 0;
-                    this.respawn();
-                }
+                return this.hp <= 0;
             }
 
             respawn() {
-                // Aparecer en una nueva posición
-                this.x = Math.random() * (window.innerWidth - 100) + 50;
-                this.y = Math.random() * (window.innerHeight - 100) + 50;
+                this.x = Math.random() * (window.innerWidth - 150) + 100;
+                this.y = Math.random() * (window.innerHeight - 250) + 200;
                 this.hp = this.maxHp;
             }
 
-            draw(ctx) {
+            draw(ctx, isTarget) {
                 ctx.save();
                 ctx.translate(this.x, this.y);
 
-                // Monstruo/Barco Enemigo (Rojo)
+                // Si es el OBJETIVO SELECCIONADO (Unitarget), dibujamos el retículo
+                if (isTarget) {
+                    ctx.strokeStyle = "#ff0000";
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius + 8, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // Cruz del objetivo
+                    ctx.beginPath();
+                    ctx.moveTo(-this.radius - 12, 0); ctx.lineTo(-this.radius - 4, 0);
+                    ctx.moveTo(this.radius + 4, 0); ctx.lineTo(this.radius + 12, 0);
+                    ctx.moveTo(0, -this.radius - 12); ctx.lineTo(0, -this.radius - 4);
+                    ctx.moveTo(0, this.radius + 4); ctx.lineTo(0, this.radius + 12);
+                    ctx.stroke();
+                }
+
+                // Cuerpo del Monstruo/Enemigo
                 ctx.fillStyle = "#8b0000";
                 ctx.beginPath();
                 ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
@@ -175,25 +234,22 @@
 
                 ctx.fillStyle = "#ff4500";
                 ctx.beginPath();
-                ctx.arc(0, 0, this.radius - 5, 0, Math.PI * 2);
+                ctx.arc(0, 0, this.radius - 6, 0, Math.PI * 2);
                 ctx.fill();
 
                 // Barra de Vida
-                const barWidth = 30;
-                const barHeight = 4;
-                ctx.fillStyle = "rgba(0,0,0,0.5)";
-                ctx.fillRect(-barWidth/2, -this.radius - 10, barWidth, barHeight);
+                const barWidth = 32;
+                ctx.fillStyle = "rgba(0,0,0,0.6)";
+                ctx.fillRect(-barWidth/2, -this.radius - 12, barWidth, 4);
 
                 ctx.fillStyle = "#00ff00";
-                ctx.fillRect(-barWidth/2, -this.radius - 10, (this.hp / this.maxHp) * barWidth, barHeight);
+                ctx.fillRect(-barWidth/2, -this.radius - 12, (this.hp / this.maxHp) * barWidth, 4);
 
                 ctx.restore();
             }
         }
 
-        // =============================================================
-        // 4. CLASE JUGADOR CON CAÑONES
-        // =============================================================
+        // 5. BARCO DEL JUGADOR
         class PlayerShip {
             constructor(x, y) {
                 this.x = x;
@@ -203,6 +259,7 @@
                 this.speed = 2.0;
                 this.angle = 0;
                 this.lastShot = 0;
+                this.selectedEnemy = null; // Guardará el enemigo fijado
             }
 
             moveTo(targetX, targetY) {
@@ -210,16 +267,8 @@
                 this.targetY = targetY;
             }
 
-            shoot(targetX, targetY, bulletsArray) {
-                const now = Date.now();
-                if (now - this.lastShot >= CANNON_CONFIG.fireRate) {
-                    // Disparar proyectil
-                    bulletsArray.push(new CannonBall(this.x, this.y, targetX, targetY));
-                    this.lastShot = now;
-                }
-            }
-
-            update() {
+            update(bulletsArray) {
+                // Movimiento
                 const dx = this.targetX - this.x;
                 const dy = this.targetY - this.y;
                 const distance = Math.hypot(dx, dy);
@@ -229,6 +278,20 @@
                     this.x += Math.cos(this.angle) * this.speed;
                     this.y += Math.sin(this.angle) * this.speed;
                 }
+
+                // Sistema AUTO-DISPARO UNITARGET
+                if (this.selectedEnemy) {
+                    const distToEnemy = Math.hypot(this.selectedEnemy.x - this.x, this.selectedEnemy.y - this.y);
+                    
+                    // Disparar automáticamente si está dentro del alcance
+                    if (distToEnemy <= CANNON_CONFIG.range) {
+                        const now = Date.now();
+                        if (now - this.lastShot >= CANNON_CONFIG.fireRate) {
+                            bulletsArray.push(new CannonBall(this.x, this.y, this.selectedEnemy.x, this.selectedEnemy.y));
+                            this.lastShot = now;
+                        }
+                    }
+                }
             }
 
             draw(ctx) {
@@ -236,32 +299,30 @@
                 ctx.translate(this.x, this.y);
                 ctx.rotate(this.angle);
 
-                // Casco del barco
+                // Casco del Barco
                 ctx.fillStyle = "#5c3d11";
                 ctx.beginPath();
-                ctx.moveTo(20, 0);
-                ctx.lineTo(-15, -10);
+                ctx.moveTo(22, 0);
+                ctx.lineTo(-15, -12);
                 ctx.lineTo(-10, 0);
-                ctx.lineTo(-15, 10);
+                ctx.lineTo(-15, 12);
                 ctx.closePath();
                 ctx.fill();
 
-                // Cañones laterales (Detalle visual)
-                ctx.fillStyle = "#222222";
-                ctx.fillRect(-2, -12, 4, 3);
-                ctx.fillRect(-2, 9, 4, 3);
+                // Cañones
+                ctx.fillStyle = "#111111";
+                ctx.fillRect(-2, -14, 4, 3);
+                ctx.fillRect(-2, 11, 4, 3);
 
                 // Velas
                 ctx.fillStyle = "#ffffff";
-                ctx.fillRect(-5, -8, 4, 16);
+                ctx.fillRect(-5, -9, 5, 18);
 
                 ctx.restore();
             }
         }
 
-        // =============================================================
-        // 5. INICIALIZACIÓN Y BUCLE PRINCIPAL
-        // =============================================================
+        // 6. INICIALIZACIÓN
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
@@ -273,14 +334,15 @@
         resizeCanvas();
 
         const ocean = new Ocean(canvas);
+        const port = new Port();
         const player = new PlayerShip(canvas.width / 2, canvas.height / 2);
         const bullets = [];
         const enemies = [
-            new Enemy(100, 150),
-            new Enemy(canvas.width - 100, 200)
+            new Enemy(1, canvas.width - 80, 220),
+            new Enemy(2, canvas.width / 2, canvas.height - 120)
         ];
 
-        // Controles Táctiles
+        // CONTROLES TÁCTILES UNITARGET
         function handleTouch(e) {
             e.preventDefault();
             const touch = e.touches[0];
@@ -288,43 +350,62 @@
             const touchX = touch.clientX - rect.left;
             const touchY = touch.clientY - rect.top;
 
-            player.moveTo(touchX, touchY);
-            player.shoot(touchX, touchY, bullets);
+            // Verificar si tocó a un enemigo
+            let clickedEnemy = null;
+            enemies.forEach(enemy => {
+                if (Math.hypot(touchX - enemy.x, touchY - enemy.y) < enemy.radius + 15) {
+                    clickedEnemy = enemy;
+                }
+            });
+
+            if (clickedEnemy) {
+                // Si tocó a un enemigo, lo fijamos como objetivo
+                player.selectedEnemy = clickedEnemy;
+            } else {
+                // Si tocó el agua, se mueve hacia allá
+                player.moveTo(touchX, touchY);
+            }
         }
 
         canvas.addEventListener('touchstart', handleTouch, {passive: false});
-        canvas.addEventListener('touchmove', handleTouch, {passive: false});
 
-        // Bucle del juego
+        // BUCLE PRINCIPAL
         function gameLoop() {
             ocean.update();
-            player.update();
+            player.update(bullets);
 
             // Actualizar Enemigos
             enemies.forEach(enemy => enemy.update());
 
-            // Actualizar y Colisiones de Balas
+            // Actualizar y Procesar Balas
             for (let i = bullets.length - 1; i >= 0; i--) {
                 const bullet = bullets[i];
                 bullet.update();
 
-                // Colisión con enemigos
                 enemies.forEach(enemy => {
-                    const dist = Math.hypot(bullet.x - enemy.x, bullet.y - enemy.y);
-                    if (dist < enemy.radius) {
-                        enemy.takeDamage(CANNON_CONFIG.damage);
+                    if (Math.hypot(bullet.x - enemy.x, bullet.y - enemy.y) < enemy.radius) {
+                        const dead = enemy.takeDamage(CANNON_CONFIG.damage);
                         bullet.active = false;
+                        
+                        if (dead) {
+                            if (player.selectedEnemy === enemy) player.selectedEnemy = null;
+                            enemy.respawn();
+                        }
                     }
                 });
 
-                if (!bullet.active) {
-                    bullets.splice(i, 1);
-                }
+                if (!bullet.active) bullets.splice(i, 1);
             }
 
-            // Renderizado
+            // RENDERIZADO
             ocean.draw();
-            enemies.forEach(enemy => enemy.draw(ctx));
+            port.draw(ctx); // Renderizar puerto e isla
+            
+            enemies.forEach(enemy => {
+                const isTarget = (player.selectedEnemy === enemy);
+                enemy.draw(ctx, isTarget);
+            });
+
             bullets.forEach(bullet => bullet.draw(ctx));
             player.draw(ctx);
 
