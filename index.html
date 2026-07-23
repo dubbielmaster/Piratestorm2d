@@ -3,107 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Pirate Storm Mobile - v0.01</title>
+    <title>Pirate Storm Mobile - v0.01.1</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body, html {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #000;
-        }
-
-        canvas {
-            display: block;
-            touch-action: none;
-        }
-
-        #ui {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            color: #ffffff;
-            font-family: Arial, sans-serif;
-            pointer-events: none;
-        }
-
-        #version {
-            font-size: 12px;
-            color: #ffd700;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-
-        #instructions {
-            font-size: 14px;
-            margin-top: 5px;
-            text-shadow: 1px 1px 2px black;
-        }
+        /* (Mismo CSS de antes, no ha cambiado) */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #000; }
+        canvas { display: block; touch-action: none; }
+        #ui { position: absolute; top: 15px; left: 15px; color: #ffffff; font-family: Arial, sans-serif; pointer-events: none; }
+        #version { font-size: 12px; color: #ffd700; font-weight: bold; text-transform: uppercase; }
+        #instructions { font-size: 14px; margin-top: 5px; text-shadow: 1px 1px 2px black; }
     </style>
 </head>
 <body>
 
     <div id="ui">
-        <div id="version">v0.01 - Motor Unificado</div>
+        <div id="version">v0.01.1 - Oleaje Mejorado</div>
         <div id="instructions">Toca el agua para navegar</div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
 
     <script>
-        // -------------------------------------------------------------
-        // 1. CLASE OCÉANO
-        // -------------------------------------------------------------
+        // =============================================================
+        // 1. CLASE OCÉANO ACTUALIZADA (Estilo Pirate Storm)
+        // =============================================================
         class Ocean {
             constructor(canvas) {
                 this.canvas = canvas;
                 this.ctx = canvas.getContext('2d');
-                this.waveOffset = 0;
+                this.time = 0;
             }
 
             update() {
-                this.waveOffset += 0.03;
+                this.time += 0.005; // Velocidad general de la animación
             }
 
             draw() {
-                // Fondo Turquesa estilo Pirate Storm
-                const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
-                gradient.addColorStop(0, "#00b4d8");
-                gradient.addColorStop(1, "#0077b6");
-                this.ctx.fillStyle = gradient;
-                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                const ctx = this.ctx;
+                const w = this.canvas.width;
+                const h = this.canvas.height;
 
-                // Ondas del agua
-                this.ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
-                this.ctx.lineWidth = 2;
+                // A) FONDO: Gradiente base (El color que te gustó)
+                const gradient = ctx.createLinearGradient(0, 0, 0, h);
+                gradient.addColorStop(0, "#00c3e3"); // Turquesa claro arriba
+                gradient.addColorStop(1, "#0084a8"); // Azul más profundo abajo
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, w, h);
 
-                for (let i = 0; i < this.canvas.height; i += 40) {
-                    this.ctx.beginPath();
-                    for (let x = 0; x < this.canvas.width; x += 30) {
-                        const y = i + Math.sin(x * 0.02 + this.waveOffset + i) * 4;
-                        if (x === 0) this.ctx.moveTo(x, y);
-                        else this.ctx.lineTo(x, y);
+                // B) ONDAS COMPLEJAS: Superposición de patrones
+                ctx.save();
+                
+                // Efecto de brillo de agua suave
+                ctx.globalCompositeOperation = 'lighter';
+                ctx.lineWidth = 1;
+
+                // Definimos varios patrones de ondas que se cruzan
+                const layers = [
+                    { freqX: 0.01, freqY: 0.01, speed: 1.0, opacity: 0.15, scaleY: 15 },
+                    { freqX: 0.02, freqY: 0.005, speed: -0.8, opacity: 0.10, scaleY: 10 },
+                    { freqX: 0.005, freqY: 0.02, speed: 1.5, opacity: 0.08, scaleY: 20 }
+                ];
+
+                layers.forEach(layer => {
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${layer.opacity})`;
+                    
+                    // Densidad de líneas (menos separación para parecer textura)
+                    const step = 15; 
+
+                    for (let yBase = -50; yBase < h + 50; yBase += step) {
+                        ctx.beginPath();
+                        
+                        for (let x = 0; x < w + 20; x += 10) {
+                            // Cálculo matemático para ondas que se mueven en X e Y
+                            const movement = this.time * layer.speed;
+                            
+                            // La magia: Seno de (X + tiempo) * Seno de (Y + tiempo) crea interferencia
+                            const waveX = Math.sin(x * layer.freqX + movement);
+                            const waveY = Math.cos((yBase + x*0.1) * layer.freqY + movement * 0.5);
+                            
+                            // Combinamos para obtener el desplazamiento vertical final
+                            const yOutput = yBase + (waveX * waveY) * layer.scaleY;
+
+                            if (x === 0) ctx.moveTo(x, yOutput);
+                            else ctx.lineTo(x, yOutput);
+                        }
+                        ctx.stroke();
                     }
-                    this.ctx.stroke();
-                }
+                });
+
+                ctx.restore();
             }
         }
 
-        // -------------------------------------------------------------
-        // 2. CLASE JUGADOR (BARCO)
-        // -------------------------------------------------------------
+        // =============================================================
+        // 2. CLASE JUGADOR (BARCO - Mismo de antes)
+        // =============================================================
         class PlayerShip {
             constructor(x, y) {
                 this.x = x;
                 this.y = y;
                 this.targetX = x;
                 this.targetY = y;
-                this.speed = 2.5;
+                this.speed = 2.0; // Un poco más lento para mejor control en móvil
                 this.angle = 0;
             }
 
@@ -129,7 +130,7 @@
                 ctx.translate(this.x, this.y);
                 ctx.rotate(this.angle);
 
-                // Casco de madera
+                // Casco
                 ctx.fillStyle = "#5c3d11";
                 ctx.beginPath();
                 ctx.moveTo(20, 0);
@@ -147,9 +148,9 @@
             }
         }
 
-        // -------------------------------------------------------------
-        // 3. INICIALIZACIÓN Y BUCLE PRINCIPAL
-        // -------------------------------------------------------------
+        // =============================================================
+        // 3. INICIALIZACIÓN Y BUCLE PRINCIPAL (Mismo de antes)
+        // =============================================================
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
@@ -163,21 +164,26 @@
         const ocean = new Ocean(canvas);
         const player = new PlayerShip(canvas.width / 2, canvas.height / 2);
 
-        // Controles Táctiles
-        canvas.addEventListener('touchstart', (e) => {
+        // Controles Táctiles Mejorados para móvil
+        function handleTouch(e) {
+            e.preventDefault(); // Previene scroll accidental
             const touch = e.touches[0];
-            player.moveTo(touch.clientX, touch.clientY);
-        });
+            const rect = canvas.getBoundingClientRect();
+            // Ajuste por si el canvas no ocupa toda la pantalla
+            player.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+        }
 
-        canvas.addEventListener('touchmove', (e) => {
-            const touch = e.touches[0];
-            player.moveTo(touch.clientX, touch.clientY);
-        });
+        canvas.addEventListener('touchstart', handleTouch, {passive: false});
+        canvas.addEventListener('touchmove', handleTouch, {passive: false});
 
         // Loop del juego
         function gameLoop() {
             ocean.update();
             player.update();
+
+            // Limpiar canvas no es necesario si el océano cubre todo, 
+            // pero es buena práctica para evitar rastros.
+            // ctx.clearRect(0, 0, canvas.width, canvas.height); 
 
             ocean.draw();
             player.draw(ctx);
