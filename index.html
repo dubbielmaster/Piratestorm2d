@@ -265,15 +265,27 @@ const oceanVertexShader = `
         vWorldPosition = worldPosition.xyz;
 
         // Cálculo de Olas Animadas
-        float elevation = sin(worldPosition.x * 0.05 + uTime * 1.5) * cos(worldPosition.z * 0.05 + uTime * 1.2) * 2.5;
-        elevation += sin(worldPosition.x * 0.1 - uTime * 2.0) * 0.8;
-        
-        worldPosition.y += elevation;
-        vElevation = elevation;
+    float wave1 =
+    sin(worldPosition.x * 0.018 + uTime * 0.8) *
+    2.2;
 
-        gl_Position = projectionMatrix * viewMatrix * worldPosition;
-    }
-`;
+float wave2 =
+    cos(worldPosition.z * 0.025 + uTime * 1.2) *
+    1.5;
+
+float wave3 =
+    sin((worldPosition.x + worldPosition.z) * 0.035 + uTime * 1.8) *
+    0.9;
+
+float wave4 =
+    sin(worldPosition.x * 0.08 - uTime * 3.5) *
+    0.35;
+
+float elevation =
+    wave1 +
+    wave2 +
+    wave3 +
+    wave4;
 
 const oceanFragmentShader = `
     uniform float uTime;
