@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pirate Storm 3D Mobile</title>
-    <!-- Cargamos Three.js para renderizado 3D Isométrico -->
+    <title>Pirates of the High Seas v0.2</title>
+    <!-- Three.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         * {
@@ -19,7 +19,7 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #0b1d3a;
+            background-color: #051329;
             font-family: 'Segoe UI', Arial, sans-serif;
         }
         #webgl-container {
@@ -28,52 +28,66 @@
             display: block;
         }
         
-        /* UI PIRATE STORM STYLE */
+        /* HUD ESTILO PIRATE STORM */
         .hud {
             position: absolute;
             top: 12px;
             left: 12px;
-            background: rgba(10, 15, 30, 0.9);
-            border: 2px solid #c59b27;
+            background: rgba(8, 14, 28, 0.88);
+            border: 2px solid #d4af37;
             border-radius: 8px;
             padding: 10px 14px;
             color: #f3e5ab;
             font-size: 13px;
             font-weight: bold;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.7);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.8);
             pointer-events: none;
         }
-        .hud div { margin-bottom: 3px; }
+        .hud div { margin-bottom: 4px; }
+
+        .version-badge {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.6);
+            color: #d4af37;
+            padding: 4px 8px;
+            font-size: 10px;
+            border-radius: 4px;
+            border: 1px solid #d4af37;
+            pointer-events: none;
+        }
 
         .port-indicator {
             position: absolute;
             top: 12px;
             right: 12px;
-            background: rgba(212, 175, 55, 0.9);
+            background: rgba(212, 175, 55, 0.95);
             color: #111;
-            padding: 8px 14px;
+            padding: 8px 16px;
             border-radius: 20px;
             font-weight: bold;
             font-size: 12px;
             display: none;
-            box-shadow: 0 0 12px #ffd700;
+            box-shadow: 0 0 15px #ffd700;
+            cursor: pointer;
         }
 
-        /* Modal del Mercado / Puerto */
+        /* MODAL DEL PUERTO Y MERCADO */
         #shop-modal {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 88%;
-            max-width: 380px;
-            background: #0f172a;
+            width: 90%;
+            max-width: 420px;
+            background: #0b1326;
             border: 3px solid #ffd700;
             border-radius: 12px;
             padding: 18px;
             color: #fff;
             display: none;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.9);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.95);
             z-index: 100;
         }
         #shop-modal h2 {
@@ -88,8 +102,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: #1e293b;
-            padding: 10px;
+            background: #17223b;
+            padding: 10px 12px;
             border-radius: 6px;
             margin-bottom: 8px;
             border: 1px solid #334155;
@@ -106,7 +120,7 @@
             font-size: 11px;
             cursor: pointer;
         }
-        .buy-btn:disabled { background: #475569; opacity: 0.6; }
+        .buy-btn:disabled { background: #475569; opacity: 0.5; }
         #close-shop {
             width: 100%;
             background: #ef4444;
@@ -115,10 +129,10 @@
             padding: 10px;
             border-radius: 6px;
             font-weight: bold;
-            margin-top: 8px;
+            margin-top: 10px;
         }
 
-        /* Controles */
+        /* CONTROLES TÁCTILES */
         .control-zone {
             position: absolute;
             bottom: 0;
@@ -164,52 +178,37 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 6px 12px rgba(0,0,0,0.7);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.8);
             text-transform: uppercase;
-        }
-
-        .hp-bar-3d {
-            position: absolute;
-            width: 40px;
-            height: 6px;
-            background: rgba(0,0,0,0.7);
-            border: 1px solid #000;
-            border-radius: 3px;
-            pointer-events: none;
-            display: none;
-        }
-        .hp-fill {
-            height: 100%;
-            background: #4ade80;
-            border-radius: 2px;
         }
     </style>
 </head>
 <body>
 
     <div id="webgl-container"></div>
+    <div class="version-badge">v0.2 - Ocean & Ships Engine</div>
 
     <!-- UI HUD -->
     <div class="hud">
-        <div>🚢 Barco: <span id="ship-name" style="color: #60a5fa;">Galeón de Combate</span></div>
-        <div>❤️ Salud: <span id="hp-display" style="color: #4ade80;">6000/6000</span></div>
-        <div>🪙 Oro: <span id="gold-display" style="color: #facc15;">100</span></div>
-        <div>⚔️ Cañones: <span id="cannon-level" style="color: #f97316;">Nvl 1 (Daño: 120)</span></div>
+        <div>🚢 Navío: <span id="ship-name" style="color: #60a5fa;">Chalupa Pirata</span></div>
+        <div>❤️ Casco: <span id="hp-display" style="color: #4ade80;">2000/2000</span></div>
+        <div>🪙 Monedas: <span id="gold-display" style="color: #facc15;">250</span></div>
+        <div>⚔️ Potencia: <span id="cannon-level" style="color: #f97316;">Batería Nvl 1</span></div>
     </div>
 
-    <div id="port-tag" class="port-indicator">⚓ Puerto Seguro (Toca para Abrir)</div>
+    <div id="port-tag" class="port-indicator">⚓ Entrar al Puerto Seguro</div>
 
-    <!-- Mercado -->
+    <!-- MERCADO / ASTILLERO -->
     <div id="shop-modal">
-        <h2>⚓ Puerto Pirata</h2>
+        <h2>⚓ Astillero & Mercado Pirata</h2>
         <div id="shop-items"></div>
         <button id="close-shop" onclick="toggleShop(false)">VOLVER AL MAR</button>
     </div>
 
-    <!-- Controles -->
+    <!-- CONTROLES -->
     <div id="left-zone" class="control-zone"></div>
     <div id="right-zone" class="control-zone">
-        <div id="fire-btn">ATACAR</div>
+        <div id="fire-btn">FUEGO</div>
     </div>
 
     <div id="joystick-base">
@@ -217,7 +216,7 @@
     </div>
 
 <script>
-// --- CONFIGURACIÓN TRES.JS (3D ISOMÉTRICO) ---
+// --- CONFIGURACIÓN TRES.JS & ESCENA ---
 const container = document.getElementById('webgl-container');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0a1e36);
@@ -229,29 +228,221 @@ const camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 1, 1
 camera.position.set(200, 250, 200);
 camera.lookAt(0, 0, 0);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 container.appendChild(renderer.domElement);
 
-// Iluminación
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+// ILUMINACIÓN SOL Y LUZ AMBIENTAL
+const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.65);
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xfff5cc, 0.8);
-dirLight.position.set(150, 300, 100);
-dirLight.castShadow = true;
-scene.add(dirLight);
+const sunLight = new THREE.DirectionalLight(0xfffbeb, 1.1);
+sunLight.position.set(200, 350, 150);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.width = 2048;
+sunLight.shadow.mapSize.height = 2048;
+sunLight.shadow.camera.near = 0.5;
+sunLight.shadow.camera.far = 1000;
+const dShadow = 300;
+sunLight.shadow.camera.left = -dShadow;
+sunLight.shadow.camera.right = dShadow;
+sunLight.shadow.camera.top = dShadow;
+sunLight.shadow.camera.bottom = -dShadow;
+scene.add(sunLight);
 
-// Océano 3D
-const oceanGeo = new THREE.PlaneGeometry(3000, 3000);
-const oceanMat = new THREE.MeshPhongMaterial({ color: 0x114466, shininess: 80 });
-const ocean = new THREE.Mesh(oceanGeo, oceanMat);
+// --- SHADER SHADER DEL OCÉANO DINÁMICO (Versión 0.2) ---
+const oceanVertexShader = `
+    uniform float uTime;
+    varying vec2 vUv;
+    varying float vElevation;
+    varying vec3 vWorldPosition;
+
+    void main() {
+        vUv = uv;
+        vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+        vWorldPosition = worldPosition.xyz;
+
+        // Cálculo de Olas Animadas
+        float elevation = sin(worldPosition.x * 0.05 + uTime * 1.5) * cos(worldPosition.z * 0.05 + uTime * 1.2) * 2.5;
+        elevation += sin(worldPosition.x * 0.1 - uTime * 2.0) * 0.8;
+        
+        worldPosition.y += elevation;
+        vElevation = elevation;
+
+        gl_Position = projectionMatrix * viewMatrix * worldPosition;
+    }
+`;
+
+const oceanFragmentShader = `
+    uniform float uTime;
+    uniform vec3 uColorShallow;
+    uniform vec3 uColorDeep;
+    uniform vec3 uColorFoam;
+
+    varying vec2 vUv;
+    varying float vElevation;
+    varying vec3 vWorldPosition;
+
+    void main() {
+        // Mezcla de agua turquesa en orillas y azul profundo en altamar
+        float mixFactor = smoothstep(-2.0, 2.5, vElevation);
+        vec3 waterColor = mix(uColorDeep, uColorShallow, mixFactor);
+
+        // Espuma sintética en las crestas de las olas
+        float foam = smoothstep(1.8, 2.8, vElevation);
+        waterColor = mix(waterColor, uColorFoam, foam * 0.6);
+
+        // Brillo Especular (Reflejo del Sol)
+        vec3 lightDir = normalize(vec3(0.5, 1.0, 0.3));
+        vec3 viewDir = normalize(cameraPosition - vWorldPosition);
+        vec3 halfVector = normalize(lightDir + viewDir);
+        float NdotH = max(0.0, dot(vec3(0.0, 1.0, 0.0), halfVector));
+        float specular = pow(NdotH, 64.0) * 0.4;
+
+        gl_FragColor = vec4(waterColor + vec3(specular), 0.92);
+    }
+`;
+
+const oceanGeometry = new THREE.PlaneGeometry(3200, 3200, 128, 128);
+const oceanUniforms = {
+    uTime: { value: 0 },
+    uColorShallow: { value: new THREE.Color(0x00a896) }, // Turquesa
+    uColorDeep: { value: new THREE.Color(0x028090) },    // Azul Marino
+    uColorFoam: { value: new THREE.Color(0xf0fdfa) }     // Espuma
+};
+
+const oceanMaterial = new THREE.ShaderMaterial({
+    vertexShader: oceanVertexShader,
+    fragmentShader: oceanFragmentShader,
+    uniforms: oceanUniforms,
+    transparent: true
+});
+
+const ocean = new THREE.Mesh(oceanGeometry, oceanMaterial);
 ocean.rotation.x = -Math.PI / 2;
 scene.add(ocean);
 
-// --- ESTADO Y JUGADOR ---
+// --- MODELADO DE BARCOS EN LOW-POLY (Chalupa, Bergantín, Bergantín de Guerra) ---
+function buildShipMesh(type = 'chalupa', isDarkSails = true) {
+    const group = new THREE.Group();
+
+    // Materiales
+    const woodDark = new THREE.MeshStandardMaterial({ color: 0x3d2314, roughness: 0.7 });
+    const woodLight = new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.6 });
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8, roughness: 0.3 });
+    const sailMat = new THREE.MeshStandardMaterial({ color: isDarkSails ? 0x22252a : 0xf8fafc, side: THREE.DoubleSide });
+    const ironMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9, roughness: 0.2 });
+
+    if (type === 'chalupa') {
+        // CHALUPA: Ligera, 1 mástil, ágil
+        const hullGeo = new THREE.BoxGeometry(10, 7, 22);
+        const hull = new THREE.Mesh(hullGeo, woodLight);
+        hull.position.y = 2.5;
+        hull.castShadow = true;
+        group.add(hull);
+
+        // Mástil Único
+        const mastGeo = new THREE.CylinderGeometry(0.5, 0.7, 18);
+        const mast = new THREE.Mesh(mastGeo, woodDark);
+        mast.position.set(0, 11, 0);
+        group.add(mast);
+
+        // Vela Latina
+        const sailGeo = new THREE.ConeGeometry(8, 14, 3);
+        const sail = new THREE.Mesh(sailGeo, sailMat);
+        sail.rotation.z = Math.PI / 2;
+        sail.position.set(0, 12, 1);
+        group.add(sail);
+
+    } else if (type === 'bergantin') {
+        // BERGANTÍN: 2 mástiles, cañones visibles, bauprés
+        const hullGeo = new THREE.BoxGeometry(14, 9, 32);
+        const hull = new THREE.Mesh(hullGeo, woodDark);
+        hull.position.y = 3.5;
+        hull.castShadow = true;
+        group.add(hull);
+
+        // Bauprés (Palo frontal)
+        const bowGeo = new THREE.CylinderGeometry(0.4, 0.6, 12);
+        const bow = new THREE.Mesh(bowGeo, woodDark);
+        bow.rotation.x = Math.PI / 3;
+        bow.position.set(0, 5, 18);
+        group.add(bow);
+
+        // 2 Mástiles con Velas
+        [-6, 6].forEach(zPos => {
+            const mastGeo = new THREE.CylinderGeometry(0.7, 0.9, 24);
+            const mast = new THREE.Mesh(mastGeo, woodDark);
+            mast.position.set(0, 14, zPos);
+            group.add(mast);
+
+            const sailGeo = new THREE.BoxGeometry(0.4, 11, 12);
+            const sail = new THREE.Mesh(sailGeo, sailMat);
+            sail.position.set(0, 15, zPos);
+            group.add(sail);
+        });
+
+        // Batería de Cañones en Babor y Estribor
+        [-4, 0, 4].forEach(z => {
+            [-7.2, 7.2].forEach(x => {
+                const cannonGeo = new THREE.CylinderGeometry(0.4, 0.5, 3);
+                const cannon = new THREE.Mesh(cannonGeo, ironMat);
+                cannon.rotation.z = Math.PI / 2;
+                cannon.position.set(x, 4, z);
+                group.add(cannon);
+            });
+        });
+
+    } else if (type === 'guerra') {
+        // BERGANTÍN DE GUERRA: Imponente, 3 mástiles, detalles dorados, doble cubierta de cañones
+        const hullGeo = new THREE.BoxGeometry(18, 12, 42);
+        const hull = new THREE.Mesh(hullGeo, woodDark);
+        hull.position.y = 4.5;
+        hull.castShadow = true;
+        group.add(hull);
+
+        // Decoraciones Doradas
+        const trimGeo = new THREE.BoxGeometry(18.6, 1.5, 42.2);
+        const trim = new THREE.Mesh(trimGeo, goldMat);
+        trim.position.y = 8;
+        group.add(trim);
+
+        // 3 Mástiles Principales
+        [-12, 0, 12].forEach(zPos => {
+            const mastGeo = new THREE.CylinderGeometry(0.8, 1.1, 30);
+            const mast = new THREE.Mesh(mastGeo, woodDark);
+            mast.position.set(0, 18, zPos);
+            group.add(mast);
+
+            // Doble Vela por Mástil
+            [14, 22].forEach(yPos => {
+                const sailGeo = new THREE.BoxGeometry(0.5, 7, 14);
+                const sail = new THREE.Mesh(sailGeo, sailMat);
+                sail.position.set(0, yPos, zPos);
+                group.add(sail);
+            });
+        });
+
+        // Batería Pesada de Cañones
+        [-10, -5, 0, 5, 10].forEach(z => {
+            [-9.3, 9.3].forEach(x => {
+                const cannonGeo = new THREE.CylinderGeometry(0.5, 0.6, 3.5);
+                const cannon = new THREE.Mesh(cannonGeo, ironMat);
+                cannon.rotation.z = Math.PI / 2;
+                cannon.position.set(x, 5, z);
+                group.add(cannon);
+            });
+        });
+    }
+
+    return group;
+}
+
+// ESTADO DEL JUGADOR
 let player = {
+    shipType: 'chalupa',
     mesh: null,
     x: 0,
     z: 0,
@@ -259,13 +450,13 @@ let player = {
     targetZ: null,
     angle: 0,
     speed: 0,
-    maxSpeed: 1.8,
-    hp: 6000,
-    maxHp: 6000,
-    gold: 100,
+    maxSpeed: 2.2,
+    hp: 2000,
+    maxHp: 2000,
+    gold: 250,
     cannonLevel: 1,
-    damage: 120,
-    range: 180,
+    damage: 150,
+    range: 190,
     fireCooldown: 0,
     radius: 12
 };
@@ -277,88 +468,57 @@ let selectedEnemy = null;
 let joystick = { active: false, startX: 0, startY: 0, currentX: 0, currentY: 0, angle: 0, distance: 0 };
 let inPortZone = false;
 
-// --- CREADOR DE MODELOS 3D ---
-function createShipMesh(isDarkSails = true, isMonster = false) {
-    const group = new THREE.Group();
-
-    if (isMonster) {
-        // Monstruo Marino (Kraken 3D)
-        const bodyGeo = new THREE.ConeGeometry(8, 25, 8);
-        const mat = new THREE.MeshLambertMaterial({ color: 0x881111 });
-        const body = new THREE.Mesh(bodyGeo, mat);
-        body.rotation.x = Math.PI / 4;
-        group.add(body);
-        return group;
-    }
-
-    // Casco de Madera del Barco (Estilo imagen de referencia)
-    const hullGeo = new THREE.BoxGeometry(14, 10, 32);
-    const hullMat = new THREE.MeshStandardMaterial({ color: 0x4a2e18, roughness: 0.6 });
-    const hull = new THREE.Mesh(hullGeo, hullMat);
-    hull.position.y = 3;
-    hull.castShadow = true;
-    group.add(hull);
-
-    // Mástiles
-    const mastMat = new THREE.MeshLambertMaterial({ color: 0x221105 });
-    [-6, 6].forEach(zPos => {
-        const mastGeo = new THREE.CylinderGeometry(0.8, 1, 24);
-        const mast = new THREE.Mesh(mastGeo, mastMat);
-        mast.position.set(0, 14, zPos);
-        group.add(mast);
-
-        // Velas Oscuras / Clásicas
-        const sailGeo = new THREE.BoxGeometry(0.5, 12, 14);
-        const sailMat = new THREE.MeshLambertMaterial({ color: isDarkSails ? 0x222222 : 0xdddddd });
-        const sail = new THREE.Mesh(sailGeo, sailMat);
-        sail.position.set(0, 15, zPos);
-        group.add(sail);
-    });
-
-    return group;
-}
-
-// Crear Barco Jugador
-player.mesh = createShipMesh(true);
+// Instanciar Barco Inicial
+player.mesh = buildShipMesh('chalupa', true);
 scene.add(player.mesh);
 
-// Crear Islas 3D
+// CREAR ISLAS CON ESPUMA Y COSTA
 for (let i = 0; i < 8; i++) {
-    const ix = (Math.random() - 0.5) * 1600;
-    const iz = (Math.random() - 0.5) * 1600;
-    const radius = 35 + Math.random() * 30;
-    const isPort = (i === 0); // La primera isla es el Puerto
+    const ix = (Math.random() - 0.5) * 1800;
+    const iz = (Math.random() - 0.5) * 1800;
+    const radius = 40 + Math.random() * 35;
+    const isPort = (i === 0);
 
     const islandGroup = new THREE.Group();
-    const geo = new THREE.CylinderGeometry(radius, radius + 10, 12, 16);
-    const mat = new THREE.MeshLambertMaterial({ color: isPort ? 0xd4af37 : 0x2e7d32 });
+
+    // Isla
+    const geo = new THREE.CylinderGeometry(radius, radius + 12, 14, 24);
+    const mat = new THREE.MeshStandardMaterial({ color: isPort ? 0xd4af37 : 0x2d6a4f, roughness: 0.9 });
     const islandMesh = new THREE.Mesh(geo, mat);
     islandMesh.position.set(ix, 2, iz);
+    islandMesh.receiveShadow = true;
     islandGroup.add(islandMesh);
 
+    // Anillo de Espuma / Orilla Turquesa
+    const foamGeo = new THREE.RingGeometry(radius, radius + 16, 32);
+    const foamMat = new THREE.MeshBasicMaterial({ color: 0xccfbf1, side: THREE.DoubleSide, transparent: true, opacity: 0.6 });
+    const foamMesh = new THREE.Mesh(foamGeo, foamMat);
+    foamMesh.rotation.x = -Math.PI / 2;
+    foamMesh.position.set(ix, 1, iz);
+    islandGroup.add(foamMesh);
+
     if (isPort) {
-        // Faro / Casa de Puerto
-        const portGeo = new THREE.BoxGeometry(12, 20, 12);
-        const portMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+        const portGeo = new THREE.BoxGeometry(16, 24, 16);
+        const portMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc });
         const portBuilding = new THREE.Mesh(portGeo, portMat);
-        portBuilding.position.set(ix, 15, iz);
+        portBuilding.position.set(ix, 18, iz);
         islandGroup.add(portBuilding);
     }
 
     scene.add(islandGroup);
-    islands.push({ x: ix, z: iz, radius: radius + 12, isPort: isPort });
+    islands.push({ x: ix, z: iz, radius: radius + 14, isPort: isPort });
 }
 
-// Generar Enemigos y Monstruos
-for (let i = 0; i < 5; i++) spawnEnemy(i === 4);
+// ENEMIGOS PATRULLANDO
+for (let i = 0; i < 5; i++) spawnEnemy();
 
-function spawnEnemy(isMonster = false) {
+function spawnEnemy() {
     const angle = Math.random() * Math.PI * 2;
-    const dist = 300 + Math.random() * 400;
+    const dist = 350 + Math.random() * 450;
     const ex = player.x + Math.cos(angle) * dist;
     const ez = player.z + Math.sin(angle) * dist;
 
-    const mesh = createShipMesh(!isMonster, isMonster);
+    const mesh = buildShipMesh('bergantin', false);
     mesh.position.set(ex, 0, ez);
     scene.add(mesh);
 
@@ -366,52 +526,59 @@ function spawnEnemy(isMonster = false) {
         mesh: mesh,
         x: ex,
         z: ez,
-        hp: isMonster ? 3000 : 1500,
-        maxHp: isMonster ? 3000 : 1500,
-        damage: isMonster ? 150 : 80,
-        isMonster: isMonster,
+        hp: 1800,
+        maxHp: 1800,
+        damage: 90,
         radius: 14
     });
 }
 
-// --- MERCADO Y COMERCIO ---
+// ASTILLERO / MEJORAS (Versión 0.2)
 function updateShopUI() {
     const container = document.getElementById('shop-items');
-    const upgradeCost = player.cannonLevel * 100;
     container.innerHTML = `
         <div class="shop-item">
             <div>
-                <h4>Mejorar Cañones (Nvl ${player.cannonLevel + 1})</h4>
-                <p>Daño actual: ${player.damage} -> Nuevo: ${player.damage + 60}</p>
+                <h4>Comprar Bergantín</h4>
+                <p>Salud: 4000 | Cañones Laterales</p>
             </div>
-            <button class="buy-btn" ${player.gold < upgradeCost ? 'disabled' : ''} onclick="buyUpgrade(${upgradeCost})">${upgradeCost} 🪙</button>
+            <button class="buy-btn" ${player.gold < 300 || player.shipType === 'bergantin' || player.shipType === 'guerra' ? 'disabled' : ''} onclick="buyShip('bergantin', 300, 4000, 220)">300 🪙</button>
         </div>
         <div class="shop-item">
             <div>
-                <h4>Reparar Galeón</h4>
-                <p>Restaura HP al 100%</p>
+                <h4>Comprar Bergantín de Guerra</h4>
+                <p>Salud: 7500 | Batería Pesada</p>
             </div>
-            <button class="buy-btn" ${player.gold < 50 ? 'disabled' : ''} onclick="repair(${50})">50 🪙</button>
+            <button class="buy-btn" ${player.gold < 700 || player.shipType === 'guerra' ? 'disabled' : ''} onclick="buyShip('guerra', 700, 7500, 380)">700 🪙</button>
+        </div>
+        <div class="shop-item">
+            <div>
+                <h4>Reparar Casco</h4>
+                <p>Restaura la salud al máximo</p>
+            </div>
+            <button class="buy-btn" ${player.gold < 50 ? 'disabled' : ''} onclick="repairShip(50)">50 🪙</button>
         </div>
     `;
 }
 
-function toggleShop(show) {
-    document.getElementById('shop-modal').style.display = show ? 'block' : 'none';
-    if (show) updateShopUI();
-}
-
-function buyUpgrade(cost) {
+function buyShip(type, cost, hp, damage) {
     if (player.gold >= cost) {
         player.gold -= cost;
-        player.cannonLevel++;
-        player.damage += 60;
+        player.shipType = type;
+        player.maxHp = hp;
+        player.hp = hp;
+        player.damage = damage;
+
+        scene.remove(player.mesh);
+        player.mesh = buildShipMesh(type, true);
+        scene.add(player.mesh);
+
         updateUI();
         updateShopUI();
     }
 }
 
-function repair(cost) {
+function repairShip(cost) {
     if (player.gold >= cost) {
         player.gold -= cost;
         player.hp = player.maxHp;
@@ -420,13 +587,20 @@ function repair(cost) {
     }
 }
 
-function updateUI() {
-    document.getElementById('hp-display').innerText = `${player.hp}/${player.maxHp}`;
-    document.getElementById('gold-display').innerText = player.gold;
-    document.getElementById('cannon-level').innerText = `Nvl ${player.cannonLevel} (Daño: ${player.damage})`;
+function toggleShop(show) {
+    document.getElementById('shop-modal').style.display = show ? 'block' : 'none';
+    if (show) updateShopUI();
 }
 
-// --- CONTROLES TÁCTILES Y MOVIMIENTO ---
+function updateUI() {
+    const names = { chalupa: 'Chalupa Pirata', bergantin: 'Bergantín de Exploración', guerra: 'Bergantín de Guerra' };
+    document.getElementById('ship-name').innerText = names[player.shipType];
+    document.getElementById('hp-display').innerText = `${player.hp}/${player.maxHp}`;
+    document.getElementById('gold-display').innerText = player.gold;
+    document.getElementById('cannon-level').innerText = `Daño: ${player.damage}`;
+}
+
+// CONTROLES TÁCTILES
 const leftZone = document.getElementById('left-zone');
 const joyBase = document.getElementById('joystick-base');
 const joyStick = document.getElementById('joystick-stick');
@@ -462,16 +636,11 @@ leftZone.addEventListener('touchend', () => {
     joyBase.style.display = 'none';
 });
 
-// Selección de Objetivo / Movimiento por Click o Toque
 window.addEventListener('pointerdown', (e) => {
     if (e.clientY > window.innerHeight * 0.5 && e.clientX < window.innerWidth * 0.5) return;
     if (e.target.id === 'fire-btn' || e.target.closest('#shop-modal')) return;
 
-    // Raycasting para detectar clics en 3D
-    const mouse = new THREE.Vector2(
-        (e.clientX / window.innerWidth) * 2 - 1,
-        -(e.clientY / window.innerHeight) * 2 + 1
-    );
+    const mouse = new THREE.Vector2((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mouse, camera);
 
@@ -480,9 +649,7 @@ window.addEventListener('pointerdown', (e) => {
 
     intersects.forEach(hit => {
         enemies.forEach(enemy => {
-            if (enemy.mesh === hit.object || enemy.mesh.children.includes(hit.object)) {
-                targetEnemy = enemy;
-            }
+            if (enemy.mesh === hit.object || enemy.mesh.children.includes(hit.object)) targetEnemy = enemy;
         });
     });
 
@@ -504,17 +671,14 @@ fireBtn.addEventListener('touchstart', (e) => {
     shootCannon(player, selectedEnemy);
 });
 
-// DISPARO UNITARGET 3D
 function shootCannon(shooter, target) {
-    if (shooter.fireCooldown > 0) return;
-    if (!target) return;
+    if (shooter.fireCooldown > 0 || !target) return;
 
     const dist = Math.hypot(target.x - shooter.x, target.z - shooter.z);
     if (dist > shooter.range) return;
 
-    // Bola de Cañón 3D
     const geo = new THREE.SphereGeometry(2.5, 8, 8);
-    const mat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+    const mat = new THREE.MeshBasicMaterial({ color: 0x1e293b });
     const ballMesh = new THREE.Mesh(geo, mat);
     ballMesh.position.set(shooter.x, 6, shooter.z);
     scene.add(ballMesh);
@@ -529,23 +693,28 @@ function shootCannon(shooter, target) {
         isPlayer: (shooter === player)
     });
 
-    shooter.fireCooldown = 30;
+    shooter.fireCooldown = 25;
 }
 
-// --- GAME LOOP & FÍSICAS DE COLISIÓN (SIN ATASCOS) ---
-function update() {
+// BUCLE PRINCIPAL (ANIMACIÓN & FÍSICAS)
+let clock = new THREE.Clock();
+
+function animate() {
+    requestAnimationFrame(animate);
+
+    const elapsedTime = clock.getElapsedTime();
+    oceanUniforms.uTime.value = elapsedTime;
+
     if (player.fireCooldown > 0) player.fireCooldown--;
 
     let moveX = 0;
     let moveZ = 0;
 
     if (joystick.active && joystick.distance > 0.1) {
-        // Movimiento por Joystick
         moveX = Math.sin(joystick.angle + Math.PI / 4) * player.maxSpeed * joystick.distance;
         moveZ = Math.cos(joystick.angle + Math.PI / 4) * player.maxSpeed * joystick.distance;
         player.angle = Math.atan2(moveX, moveZ);
     } else if (player.targetX !== null) {
-        // Movimiento a Destino
         const dx = player.targetX - player.x;
         const dz = player.targetZ - player.z;
         const dist = Math.hypot(dx, dz);
@@ -559,7 +728,7 @@ function update() {
         }
     }
 
-    // APLICAR MOVIMIENTO CON DESLIZAMIENTO EN ISLAS (Evita atascos)
+    // DESLIZAMIENTO EN ISLAS (Colisión pulida sin atascos)
     let nextX = player.x + moveX;
     let nextZ = player.z + moveZ;
 
@@ -567,13 +736,12 @@ function update() {
     islands.forEach(island => {
         const dist = Math.hypot(nextX - island.x, nextZ - island.z);
         if (dist < island.radius + player.radius) {
-            // Calcular vector de empuje para rebotar/deslizar suavemente por la orilla
             const pushAngle = Math.atan2(nextZ - island.z, nextX - island.x);
             nextX = island.x + Math.cos(pushAngle) * (island.radius + player.radius);
             nextZ = island.z + Math.sin(pushAngle) * (island.radius + player.radius);
         }
 
-        if (island.isPort && dist < island.radius + 30) {
+        if (island.isPort && dist < island.radius + 35) {
             inPortZone = true;
         }
     });
@@ -582,21 +750,25 @@ function update() {
 
     player.x = nextX;
     player.z = nextZ;
-    player.mesh.position.set(player.x, 0, player.z);
-    player.mesh.rotation.y = player.angle;
 
-    // La Cámara Isométrica sigue suavemente al Barco
+    // Balanceo suave del barco sobre las olas
+    const pitch = Math.sin(elapsedTime * 2) * 0.05;
+    const roll = Math.cos(elapsedTime * 1.5) * 0.05;
+
+    player.mesh.position.set(player.x, Math.sin(elapsedTime * 2) * 0.8, player.z);
+    player.mesh.rotation.set(pitch, player.angle, roll);
+
+    // Cámara Isométrica
     camera.position.x = player.x + 200;
     camera.position.z = player.z + 200;
     camera.lookAt(player.x, 0, player.z);
 
-    // Mover Balas 3D en Parábola
+    // Balas de Cañón
     for (let i = cannonballs.length - 1; i >= 0; i--) {
         let b = cannonballs[i];
-        b.progress += 0.04;
+        b.progress += 0.045;
 
         if (b.progress >= 1) {
-            // Impacto
             if (b.target) {
                 b.target.hp -= b.damage;
                 if (!b.isPlayer) {
@@ -607,10 +779,9 @@ function update() {
             scene.remove(b.mesh);
             cannonballs.splice(i, 1);
         } else {
-            // Trayectoria curva 3D
             b.mesh.position.x = THREE.MathUtils.lerp(b.startX, b.target.x, b.progress);
             b.mesh.position.z = THREE.MathUtils.lerp(b.startZ, b.target.z, b.progress);
-            b.mesh.position.y = Math.sin(b.progress * Math.PI) * 20 + 4;
+            b.mesh.position.y = Math.sin(b.progress * Math.PI) * 22 + 4;
         }
     }
 
@@ -618,34 +789,29 @@ function update() {
     enemies.forEach((e, index) => {
         const dist = Math.hypot(player.x - e.x, player.z - e.z);
 
-        if (dist < 220) {
+        if (dist < 230) {
             e.angle = Math.atan2(player.x - e.x, player.z - e.z);
             e.mesh.rotation.y = e.angle;
 
-            if (dist > 90) {
-                e.x += Math.sin(e.angle) * 0.8;
-                e.z += Math.cos(e.angle) * 0.8;
+            if (dist > 95) {
+                e.x += Math.sin(e.angle) * 0.9;
+                e.z += Math.cos(e.angle) * 0.9;
                 e.mesh.position.set(e.x, 0, e.z);
             } else {
                 shootCannon(e, player);
             }
         }
 
-        // Muerte de enemigo
         if (e.hp <= 0) {
             scene.remove(e.mesh);
-            player.gold += e.isMonster ? 150 : 50;
+            player.gold += 120;
             updateUI();
             if (selectedEnemy === e) selectedEnemy = null;
             enemies.splice(index, 1);
-            setTimeout(() => spawnEnemy(Math.random() > 0.7), 5000);
+            setTimeout(() => spawnEnemy(), 6000);
         }
     });
-}
 
-function animate() {
-    requestAnimationFrame(animate);
-    update();
     renderer.render(scene, camera);
 }
 
