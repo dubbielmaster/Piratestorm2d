@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pirate Storm Mobile</title>
+    <title>Pirate Storm Mobile 2D</title>
     <style>
         * {
             box-sizing: border-box;
@@ -17,25 +17,36 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #0d2b45;
-            font-family: Arial, sans-serif;
+            background-color: #0b2236;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         #gameCanvas {
             display: block;
             width: 100%;
             height: 100%;
         }
-        /* UI y Controles Táctiles */
+        
+        /* UI PIRATE STORM STYLE */
         .hud {
             position: absolute;
-            top: 10px;
-            left: 10px;
-            color: #fff;
-            text-shadow: 2px 2px 4px #000;
-            font-size: 16px;
+            top: 12px;
+            left: 12px;
+            background: rgba(15, 23, 42, 0.85);
+            border: 2px solid #b8860b;
+            border-radius: 8px;
+            padding: 10px 15px;
+            color: #f3e5ab;
+            font-size: 14px;
             font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.6);
             pointer-events: none;
         }
+        .hud div {
+            margin-bottom: 4px;
+        }
+        .hud div:last-child { margin-bottom: 0; }
+
+        /* Zonas de Control */
         .control-zone {
             position: absolute;
             bottom: 0;
@@ -47,40 +58,48 @@
 
         #joystick-base {
             position: absolute;
-            width: 100px;
-            height: 100px;
+            width: 90px;
+            height: 90px;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.2);
-            border: 2px solid rgba(255, 255, 255, 0.4);
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(212, 175, 55, 0.6);
             display: none;
             transform: translate(-50%, -50%);
+            pointer-events: none;
         }
         #joystick-stick {
             position: absolute;
-            width: 40px;
-            height: 40px;
+            width: 35px;
+            height: 35px;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.6);
-            top: 30px;
-            left: 30px;
+            background: radial-gradient(circle, #ffd700, #b8860b);
+            top: 27.5px;
+            left: 27.5px;
         }
+
+        /* Botón de Disparo */
         #fire-btn {
             position: absolute;
-            bottom: 40px;
-            right: 40px;
-            width: 80px;
-            height: 80px;
+            bottom: 30px;
+            right: 30px;
+            width: 85px;
+            height: 85px;
             border-radius: 50%;
-            background: radial-gradient(circle, #ff5555, #990000);
-            border: 3px solid #fff;
-            color: white;
+            background: radial-gradient(circle, #e63946, #800000);
+            border: 3px solid #ffd700;
+            color: #fff;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 13px;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
-            active: background: #cc0000;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.6);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        #fire-btn:active {
+            transform: scale(0.95);
+            background: radial-gradient(circle, #bd2130, #500000);
         }
     </style>
 </head>
@@ -88,17 +107,17 @@
 
     <canvas id="gameCanvas"></canvas>
 
-    <!-- UI -->
+    <!-- Interfaz del Jugador -->
     <div class="hud">
-        🚢 Vida: <span id="hp-display">100</span>%<br>
-        🪙 Oro: <span id="gold-display">0</span><br>
-        ☠️ Enemigos hundidos: <span id="score-display">0</span>
+        <div>🚢 Salud: <span id="hp-display" style="color: #4ade80;">100/100</span></div>
+        <div>🪙 Oro: <span id="gold-display" style="color: #facc15;">0</span></div>
+        <div>☠️ Hundidos: <span id="score-display" style="color: #f87171;">0</span></div>
     </div>
 
-    <!-- Zonas de Control -->
+    <!-- Controles Táctiles -->
     <div id="left-zone" class="control-zone"></div>
     <div id="right-zone" class="control-zone">
-        <div id="fire-btn">¡FUEGO!</div>
+        <div id="fire-btn">DISPARAR</div>
     </div>
 
     <div id="joystick-base">
@@ -120,50 +139,74 @@ window.addEventListener('resize', resizeCanvas);
 let player = {
     x: 0,
     y: 0,
+    targetX: null,
+    targetY: null,
     angle: 0,
     speed: 0,
-    maxSpeed: 3,
+    maxSpeed: 2.8,
     hp: 100,
     maxHp: 100,
     gold: 0,
     score: 0,
-    fireCooldown: 0
+    fireCooldown: 0,
+    range: 300
 };
 
+let selectedEnemy = null;
 let enemies = [];
 let cannonballs = [];
 let particles = [];
-let joystick = { active: false, startX: 0, startY: 0, currentX: 0, currentY: 0, angle: 0, distance: 0 };
+let damageTexts = [];
+let lootChests = [];
+let islands = [];
 
-player.x = canvas.width / 2;
-player.y = canvas.height / 2;
+let joystick = { active: false, startX: 0, startY: 0, currentX: 0, currentY: 0, angle: 0, distance: 0 };
+let waveOffset = 0;
+
+player.x = 1000;
+player.y = 1000;
+
+// Generar Islas fijas en el mapa
+for (let i = 0; i < 12; i++) {
+    islands.push({
+        x: Math.random() * 3000 - 500,
+        y: Math.random() * 3000 - 500,
+        radius: 40 + Math.random() * 50
+    });
+}
 
 // Generar enemigos iniciales
-for (let i = 0; i < 4; i++) {
+for (let i = 0; i < 6; i++) {
     spawnEnemy();
 }
 
 function spawnEnemy() {
     const angle = Math.random() * Math.PI * 2;
-    const dist = 300 + Math.random() * 400;
+    const dist = 400 + Math.random() * 500;
     enemies.push({
+        id: Math.random(),
         x: player.x + Math.cos(angle) * dist,
         y: player.y + Math.sin(angle) * dist,
-        angle: 0,
-        hp: 40,
-        maxHp: 40,
-        fireCooldown: 0
+        angle: Math.random() * Math.PI * 2,
+        hp: 60,
+        maxHp: 60,
+        speed: 1.5,
+        fireCooldown: 0,
+        range: 220
     });
 }
 
-// --- CONTROLES TÁCTILES ---
+// --- CONTROLES Y TÁCTIL ---
 const leftZone = document.getElementById('left-zone');
 const joyBase = document.getElementById('joystick-base');
 const joyStick = document.getElementById('joystick-stick');
 const fireBtn = document.getElementById('fire-btn');
 
+// Control del Joystick
 leftZone.addEventListener('touchstart', (e) => {
     const touch = e.touches[0];
+    
+    // Si toca cerca de la esquina inferior izquierda, activa joystick
     joystick.active = true;
     joystick.startX = touch.clientX;
     joystick.startY = touch.clientY;
@@ -173,6 +216,8 @@ leftZone.addEventListener('touchstart', (e) => {
     joyBase.style.left = `${touch.clientX}px`;
     joyBase.style.top = `${touch.clientY}px`;
     joyBase.style.display = 'block';
+
+    player.targetX = null; // Cancela movimiento por toque
 });
 
 leftZone.addEventListener('touchmove', (e) => {
@@ -187,7 +232,7 @@ leftZone.addEventListener('touchmove', (e) => {
     const angle = Math.atan2(dy, dx);
 
     joystick.angle = angle;
-    joystick.distance = dist / 40; // 0 a 1
+    joystick.distance = dist / 40;
 
     joyStick.style.transform = `translate(${Math.cos(angle) * dist}px, ${Math.sin(angle) * dist}px)`;
 });
@@ -200,218 +245,372 @@ const endJoystick = () => {
 leftZone.addEventListener('touchend', endJoystick);
 leftZone.addEventListener('touchcancel', endJoystick);
 
-fireBtn.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    shootCannonballs(player, true);
+// Seleccionar Enemigo / Mover con Toque en Pantalla (Navegación tipo Pirate Storm)
+window.addEventListener('click', (e) => {
+    // Evitar si tocó controles UI
+    if (e.clientY > window.innerHeight * 0.5 && e.clientX < window.innerWidth * 0.5) return;
+    if (e.target.id === 'fire-btn') return;
+
+    // Convertir coordenadas de pantalla a coordenadas de mundo
+    const worldX = e.clientX - canvas.width / 2 + player.x;
+    const worldY = e.clientY - canvas.height / 2 + player.y;
+
+    // Verificar si tocó un enemigo para seleccionarlo
+    let clickedEnemy = null;
+    enemies.forEach(enemy => {
+        if (Math.hypot(enemy.x - worldX, enemy.y - worldY) < 35) {
+            clickedEnemy = enemy;
+        }
+    });
+
+    if (clickedEnemy) {
+        selectedEnemy = clickedEnemy;
+    } else {
+        // Mover el barco al punto donde tocó
+        player.targetX = worldX;
+        player.targetY = worldY;
+    }
 });
 
-// Soporte para probar con Teclado en PC
-let keys = {};
-window.addEventListener('keydown', e => keys[e.key] = true);
-window.addEventListener('keyup', e => keys[e.key] = false);
+fireBtn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    shootCannons(player, selectedEnemy);
+});
 
-// --- MECÁNICAS DE DISPARO ---
-function shootCannonballs(ship, isPlayer) {
+// --- LÓGICA DE DISPARO Y COMBATE ---
+function shootCannons(ship, target) {
     if (ship.fireCooldown > 0) return;
 
-    // Dispara por ambos costados (estilo nave/barco)
-    [-Math.PI / 2, Math.PI / 2].forEach(sideAngle => {
-        const angle = ship.angle + sideAngle;
+    // Disparo manual/automático si hay un objetivo cerca
+    let targetAngle = ship.angle;
+    if (target) {
+        const dist = Math.hypot(target.x - ship.x, target.y - ship.y);
+        if (dist <= ship.range) {
+            targetAngle = Math.atan2(target.y - ship.y, target.x - ship.x);
+        }
+    }
+
+    // Disparar cañones por babor y estribor (lados)
+    [-Math.PI / 2, Math.PI / 2].forEach(offset => {
+        const angle = targetAngle + offset;
         cannonballs.push({
             x: ship.x,
             y: ship.y,
-            vx: Math.cos(angle) * 6,
-            vy: Math.sin(angle) * 6,
-            life: 40,
-            isPlayer: isPlayer
+            vx: Math.cos(angle) * 7,
+            vy: Math.sin(angle) * 7,
+            life: 35,
+            isPlayer: (ship === player)
         });
     });
 
-    ship.fireCooldown = 25; // Tiempo entre ráfagas
+    // Humo en el cañón
+    createParticles(ship.x, ship.y, '#aaa', 5);
+    ship.fireCooldown = 30; // Cooldown entre descargas
 }
 
-// --- BUCLE PRINCIPAL (GAME LOOP) ---
+function showDamageText(x, y, text, color = '#f87171') {
+    damageTexts.push({ x, y, text, color, alpha: 1, vy: -1 });
+}
+
+// --- BUCLE PRINCIPAL (UPDATE) ---
 function update() {
-    // Cooldowns
+    waveOffset += 0.03;
     if (player.fireCooldown > 0) player.fireCooldown--;
 
-    // Movimiento Jugador (Joystick táctil)
+    // Movimiento Jugador (Joystick o Destino)
     if (joystick.active && joystick.distance > 0.1) {
         player.angle = joystick.angle;
         player.speed = player.maxSpeed * joystick.distance;
-    } else {
-        // Movimiento Teclado PC (alternativa)
-        if (keys['ArrowUp'] || keys['w']) player.speed = player.maxSpeed;
-        else player.speed *= 0.95; // Fricción del agua
+    } else if (player.targetX !== null && player.targetY !== null) {
+        const dx = player.targetX - player.x;
+        const dy = player.targetY - player.y;
+        const dist = Math.hypot(dx, dy);
 
-        if (keys['ArrowLeft'] || keys['a']) player.angle -= 0.05;
-        if (keys['ArrowRight'] || keys['d']) player.angle += 0.05;
-        if (keys[' ']) shootCannonballs(player, true);
+        if (dist > 10) {
+            player.angle = Math.atan2(dy, dx);
+            player.speed = player.maxSpeed;
+        } else {
+            player.speed = 0;
+            player.targetX = null;
+            player.targetY = null;
+        }
+    } else {
+        player.speed *= 0.92; // Fricción suave en el agua
     }
 
-    player.x += Math.cos(player.angle) * player.speed;
-    player.y += Math.sin(player.angle) * player.speed;
+    // Aplicar movimiento y colisión con islas
+    let nextX = player.x + Math.cos(player.angle) * player.speed;
+    let nextY = player.y + Math.sin(player.angle) * player.speed;
 
-    // Mover balas
+    islands.forEach(island => {
+        if (Math.hypot(nextX - island.x, nextY - island.y) < island.radius + 15) {
+            player.speed = 0;
+            nextX = player.x;
+            nextY = player.y;
+        }
+    });
+
+    player.x = nextX;
+    player.y = nextY;
+
+    // Recoger Cofres de Botín
+    for (let i = lootChests.length - 1; i >= 0; i--) {
+        let chest = lootChests[i];
+        if (Math.hypot(player.x - chest.x, player.y - chest.y) < 30) {
+            player.gold += chest.gold;
+            player.hp = Math.min(player.maxHp, player.hp + 15); // Cura 15 HP
+            showDamageText(player.x, player.y - 20, `+${chest.gold} Oro`, '#facc15');
+            document.getElementById('gold-display').innerText = player.gold;
+            document.getElementById('hp-display').innerText = `${player.hp}/${player.maxHp}`;
+            lootChests.splice(i, 1);
+        }
+    }
+
+    // Actualizar Balas de Cañón
     for (let i = cannonballs.length - 1; i >= 0; i--) {
         let b = cannonballs[i];
         b.x += b.vx;
         b.y += b.vy;
         b.life--;
 
-        // Colisión Bala con Enemigo
+        // Impacto de balas
         if (b.isPlayer) {
             enemies.forEach(e => {
-                if (Math.hypot(e.x - b.x, e.y - b.y) < 20) {
-                    e.hp -= 15;
+                if (Math.hypot(e.x - b.x, e.y - b.y) < 22) {
+                    const damage = Math.floor(12 + Math.random() * 8);
+                    e.hp -= damage;
                     b.life = 0;
-                    createExplosion(b.x, b.y, '#ffaa00');
+                    createParticles(b.x, b.y, '#ff8c00', 8);
+                    showDamageText(e.x, e.y, `-${damage}`);
                 }
             });
         } else {
-            // Colisión Bala Enemiga con Jugador
-            if (Math.hypot(player.x - b.x, player.y - b.y) < 20) {
-                player.hp = Math.max(0, player.hp - 10);
+            if (Math.hypot(player.x - b.x, player.y - b.y) < 22) {
+                const damage = Math.floor(8 + Math.random() * 6);
+                player.hp = Math.max(0, player.hp - damage);
                 b.life = 0;
-                createExplosion(b.x, b.y, '#ff4444');
-                document.getElementById('hp-display').innerText = player.hp;
+                createParticles(b.x, b.y, '#ef4444', 8);
+                showDamageText(player.x, player.y, `-${damage}`, '#ef4444');
+                document.getElementById('hp-display').innerText = `${player.hp}/${player.maxHp}`;
             }
         }
 
         if (b.life <= 0) cannonballs.splice(i, 1);
     }
 
-    // Actualizar IA de Enemigos
+    // IA Enemigos
     enemies.forEach((e, index) => {
         if (e.fireCooldown > 0) e.fireCooldown--;
 
         const distToPlayer = Math.hypot(player.x - e.x, player.y - e.y);
-        e.angle = Math.atan2(player.y - e.y, player.x - e.x);
 
-        // Persecución si está lejos, orbita/dispara si está cerca
-        if (distToPlayer > 120) {
-            e.x += Math.cos(e.angle) * 1.5;
-            e.y += Math.sin(e.angle) * 1.5;
-        } else if (distToPlayer < 250) {
-            shootCannonballs(e, false);
+        if (distToPlayer < 350) {
+            e.angle = Math.atan2(player.y - e.y, player.x - e.x);
+
+            if (distToPlayer > 140) {
+                e.x += Math.cos(e.angle) * e.speed;
+                e.y += Math.sin(e.angle) * e.speed;
+            } else {
+                // Ráfaga enemiga cuando está cerca
+                shootCannons(e, player);
+            }
         }
 
         // Muerte del enemigo
         if (e.hp <= 0) {
-            createExplosion(e.x, e.y, '#ff5500', 15);
-            player.gold += 25;
+            createParticles(e.x, e.y, '#e63946', 20);
+            
+            // Soltar Cofre
+            lootChests.push({ x: e.x, y: e.y, gold: 20 + Math.floor(Math.random() * 20) });
+
+            if (selectedEnemy === e) selectedEnemy = null;
             player.score++;
-            document.getElementById('gold-display').innerText = player.gold;
             document.getElementById('score-display').innerText = player.score;
+            
             enemies.splice(index, 1);
-            setTimeout(spawnEnemy, 3000); // Reaparece en 3 segundos
+            setTimeout(spawnEnemy, 4000);
         }
     });
 
-    // Partículas
+    // Partículas y Textos de Daño
     for (let i = particles.length - 1; i >= 0; i--) {
         let p = particles[i];
         p.x += p.vx;
         p.y += p.vy;
-        p.alpha -= 0.03;
+        p.alpha -= 0.04;
         if (p.alpha <= 0) particles.splice(i, 1);
+    }
+
+    for (let i = damageTexts.length - 1; i >= 0; i--) {
+        let dt = damageTexts[i];
+        dt.y += dt.vy;
+        dt.alpha -= 0.02;
+        if (dt.alpha <= 0) damageTexts.splice(i, 1);
     }
 }
 
-function createExplosion(x, y, color, count = 6) {
+function createParticles(x, y, color, count) {
     for (let i = 0; i < count; i++) {
         particles.push({
             x: x, y: y,
-            vx: (Math.random() - 0.5) * 4,
-            vy: (Math.random() - 0.5) * 4,
+            vx: (Math.random() - 0.5) * 5,
+            vy: (Math.random() - 0.5) * 5,
             alpha: 1, color: color
         });
     }
 }
 
-// --- RENDERIZADO (DIBUJO) ---
+// --- RENDERIZADO 2D ---
 function render() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Fondo del mar
+    ctx.fillStyle = '#0f385d';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Guardar cámara centrada en el jugador
     ctx.save();
+    // Cámara centrada en el jugador
     ctx.translate(canvas.width / 2 - player.x, canvas.height / 2 - player.y);
 
-    // Fondo (Cuadrícula del Océano)
-    ctx.strokeStyle = '#133a5d';
+    // Dibujar olas de mar
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
     ctx.lineWidth = 2;
-    const gridSize = 100;
-    const startX = Math.floor((player.x - canvas.width) / gridSize) * gridSize;
-    const endX = Math.floor((player.x + canvas.width) / gridSize) * gridSize;
-    const startY = Math.floor((player.y - canvas.height) / gridSize) * gridSize;
-    const endY = Math.floor((player.y + canvas.height) / gridSize) * gridSize;
+    const spacing = 120;
+    const startX = Math.floor((player.x - canvas.width) / spacing) * spacing;
+    const endX = Math.floor((player.x + canvas.width) / spacing) * spacing;
+    const startY = Math.floor((player.y - canvas.height) / spacing) * spacing;
+    const endY = Math.floor((player.y + canvas.height) / spacing) * spacing;
 
-    for (let x = startX; x < endX; x += gridSize) {
-        for (let y = startY; y < endY; y += gridSize) {
-            ctx.strokeRect(x, y, gridSize, gridSize);
+    for (let x = startX; x < endX; x += spacing) {
+        for (let y = startY; y < endY; y += spacing) {
+            ctx.beginPath();
+            ctx.arc(x + Math.sin(waveOffset + y) * 10, y + Math.cos(waveOffset + x) * 10, 15, 0, Math.PI);
+            ctx.stroke();
         }
     }
+
+    // Dibujar Islas
+    islands.forEach(island => {
+        ctx.fillStyle = '#c2a649'; // Playa
+        ctx.beginPath();
+        ctx.arc(island.x, island.y, island.radius + 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#2d6a4f'; // Selva/Centro
+        ctx.beginPath();
+        ctx.arc(island.x, island.y, island.radius, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    // Dibujar Cofres de Botín
+    lootChests.forEach(chest => {
+        ctx.fillStyle = '#b8860b';
+        ctx.fillRect(chest.x - 8, chest.y - 6, 16, 12);
+        ctx.fillStyle = '#ffd700';
+        ctx.fillRect(chest.x - 3, chest.y - 3, 6, 6);
+    });
 
     // Dibujar Partículas
     particles.forEach(p => {
         ctx.globalAlpha = p.alpha;
         ctx.fillStyle = p.color;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
         ctx.fill();
     });
     ctx.globalAlpha = 1;
 
     // Dibujar Balas
-    ctx.fillStyle = '#000';
+    ctx.fillStyle = '#111';
     cannonballs.forEach(b => {
         ctx.beginPath();
-        ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
+        ctx.arc(b.x, b.y, 3.5, 0, Math.PI * 2);
         ctx.fill();
     });
 
     // Dibujar Enemigos
-    enemies.forEach(e => drawShip(e.x, e.y, e.angle, '#d9534f', e.hp, e.maxHp));
+    enemies.forEach(e => {
+        const isSelected = (e === selectedEnemy);
+        drawShip(e.x, e.y, e.angle, '#e63946', e.hp, e.maxHp, isSelected);
+    });
 
-    // Dibujar Barco del Jugador
-    drawShip(player.x, player.y, player.angle, '#5cb85c', player.hp, player.maxHp);
+    // Dibujar Jugador
+    drawShip(player.x, player.y, player.angle, '#2a9d8f', player.hp, player.maxHp, false);
+
+    // Dibujar Números de Daño / Mensajes Flotantes
+    damageTexts.forEach(dt => {
+        ctx.globalAlpha = dt.alpha;
+        ctx.fillStyle = dt.color;
+        ctx.font = 'bold 14px Arial';
+        ctx.fillText(dt.text, dt.x - 10, dt.y);
+    });
+    ctx.globalAlpha = 1;
 
     ctx.restore();
 }
 
-function drawShip(x, y, angle, color, hp, maxHp) {
+// Función para renderizar los Barcos 2D
+function drawShip(x, y, angle, hullColor, hp, maxHp, isSelected) {
     ctx.save();
     ctx.translate(x, y);
+
+    // Círculo de Objetivo Seleccionado (Pirate Storm Style)
+    if (isSelected) {
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        ctx.arc(0, 0, 32, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
     ctx.rotate(angle);
 
-    // Casco del barco
-    ctx.fillStyle = color;
+    // Sombras
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
     ctx.beginPath();
-    ctx.moveTo(18, 0);
-    ctx.lineTo(-12, -10);
-    ctx.lineTo(-12, 10);
+    ctx.ellipse(3, 3, 20, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Casco del barco (2D)
+    ctx.fillStyle = hullColor;
+    ctx.beginPath();
+    ctx.moveTo(22, 0); // Proa (Punta)
+    ctx.quadraticCurveTo(0, 12, -16, 10); // Lado babor
+    ctx.lineTo(-20, 0); // Popa (Atrás)
+    ctx.quadraticCurveTo(0, -12, 22, 0); // Lado estribor
     ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = '#222';
+    ctx.strokeStyle = '#1d3557';
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Detalle de velas
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(-6, -8, 4, 16);
+    // Cubierta de Madera
+    ctx.fillStyle = '#8d5b4c';
+    ctx.fillRect(-10, -4, 20, 8);
+
+    // Velas Blancas
+    ctx.fillStyle = '#f8f9fa';
+    ctx.fillRect(-6, -11, 4, 22); // Vela mayor
+    ctx.fillRect(8, -8, 3, 16);  // Vela delantera
 
     ctx.restore();
 
-    // Barra de Vida
-    if (hp < maxHp) {
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(x - 15, y - 22, 30, 5);
-        ctx.fillStyle = color;
-        ctx.fillRect(x - 15, y - 22, (hp / maxHp) * 30, 5);
-    }
+    // Barra de Vida 2D sobre el barco
+    const barWidth = 36;
+    const barHeight = 5;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillRect(x - barWidth / 2, y - 28, barWidth, barHeight);
+
+    const healthPercent = Math.max(0, hp / maxHp);
+    ctx.fillStyle = healthPercent > 0.4 ? '#4ade80' : '#ef4444';
+    ctx.fillRect(x - barWidth / 2, y - 28, barWidth * healthPercent, barHeight);
+    
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x - barWidth / 2, y - 28, barWidth, barHeight);
 }
 
-// Bucle principal
+// Bucle Principal
 function loop() {
     update();
     render();
@@ -422,4 +621,3 @@ loop();
 </script>
 </body>
 </html>
-
