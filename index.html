@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Pirate Storm Mobile - v0.06</title>
+    <title>Pirate Storm Mobile - v0.07</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
         body, html { width: 100%; height: 100%; overflow: hidden; background-color: #000; font-family: Arial, sans-serif; }
-        #game-container { width: 100vw; height: 100vh; }
+        #game-container { width: 100vw; height: 100vh; position: relative; }
         
-        /* Interfaz UI Móvil superior */
+        /* Interfaz UI Superior */
         #hud {
-            position: absolute; top: 10px; left: 10px; right: 10px;
-            display: flex; justify-content: space-between; align-items: center;
+            position: absolute; top: 10px; left: 10px;
+            display: flex; flex-direction: column; gap: 5px;
             pointer-events: none; z-index: 10;
         }
         .hud-box {
@@ -20,6 +20,8 @@
             border-radius: 8px; border: 1px solid #ffd700; font-size: 12px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.5);
         }
+        
+        /* Botones de menú */
         #controls-panel {
             position: absolute; bottom: 15px; right: 15px;
             display: flex; gap: 10px; z-index: 10;
@@ -30,6 +32,15 @@
             font-size: 13px; box-shadow: 0 4px 6px rgba(0,0,0,0.5);
         }
         .btn-game:active { transform: scale(0.95); background: #ef233c; }
+
+        /* Minimapa */
+        #minimap-container {
+            position: absolute; top: 10px; right: 10px;
+            width: 110px; height: 110px;
+            border: 2px solid #ffd700; border-radius: 8px;
+            background: rgba(0, 0, 0, 0.8); overflow: hidden; z-index: 10;
+        }
+        #minimap-canvas { width: 100%; height: 100%; }
 
         /* Ventanas Modales */
         #modal {
@@ -42,7 +53,9 @@
         .modal-item { display: flex; justify-content: space-between; align-items: center; margin: 8px 0; background: rgba(255,255,255,0.1); padding: 8px; border-radius: 6px; }
         .close-btn { background: #778da9; color: white; border: none; padding: 6px 12px; border-radius: 4px; float: right; }
     </style>
+    <!-- Framework Phaser 3 y Plugin de Joystick Virtual -->
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/phaser3-plugin-gae/dist/rexvirtualjoystickplugin.min.js"></script>
 </head>
 <body>
 
@@ -52,9 +65,13 @@
             <b>Nivel:</b> 1 | <b>Oro:</b> <span id="gold-val">1000</span>
         </div>
         <div class="hud-box" id="map-info">
-            <b>Mapa:</b> Bahía del Inicio (1/10)<br>
-            <span style="color:#ffd700; font-size:10px;">Busca el Portal para viajar</span>
+            <b>Mapa:</b> Bahía del Inicio (1/10)
         </div>
+    </div>
+
+    <!-- Minimapa UI -->
+    <div id="minimap-container">
+        <canvas id="minimap-canvas" width="110" height="110"></canvas>
     </div>
 
     <div id="controls-panel">
@@ -74,17 +91,19 @@
         // =============================================================
         // 1. BASE DE DATOS
         // =============================================================
+        const MAP_SIZE = 3000;
+
         const SHIPS_DB = [
-            { id: 1, name: "Balsa de Madera", hp: 100, speed: 120, price: 0 },
-            { id: 2, name: "Sloop de Caza", hp: 250, speed: 140, price: 500 },
-            { id: 3, name: "Carabela Mercante", hp: 500, speed: 130, price: 1200 },
-            { id: 4, name: "Bergantín Filibustero", hp: 900, speed: 150, price: 2500 },
-            { id: 5, name: "Goleta de Guerra", hp: 1500, speed: 160, price: 5000 },
-            { id: 6, name: "Fragata de Asalto", hp: 2300, speed: 145, price: 10000 },
-            { id: 7, name: "Galeón Real", hp: 3500, speed: 135, price: 20000 },
-            { id: 8, name: "Acorazado del Abismo", hp: 5000, speed: 130, price: 40000 },
-            { id: 9, name: "Leviatán de Acero", hp: 7500, speed: 140, price: 80000 },
-            { id: 10, name: "Señor de las Tormentas", hp: 12000, speed: 155, price: 150000 }
+            { id: 1, name: "Balsa de Madera", hp: 100, speed: 130, price: 0 },
+            { id: 2, name: "Sloop de Caza", hp: 250, speed: 150, price: 500 },
+            { id: 3, name: "Carabela Mercante", hp: 500, speed: 140, price: 1200 },
+            { id: 4, name: "Bergantín Filibustero", hp: 900, speed: 160, price: 2500 },
+            { id: 5, name: "Goleta de Guerra", hp: 1500, speed: 170, price: 5000 },
+            { id: 6, name: "Fragata de Asalto", hp: 2300, speed: 155, price: 10000 },
+            { id: 7, name: "Galeón Real", hp: 3500, speed: 145, price: 20000 },
+            { id: 8, name: "Acorazado del Abismo", hp: 5000, speed: 140, price: 40000 },
+            { id: 9, name: "Leviatán de Acero", hp: 7500, speed: 150, price: 80000 },
+            { id: 10, name: "Señor de las Tormentas", hp: 12000, speed: 165, price: 150000 }
         ];
 
         const MAPS_DB = [
@@ -109,36 +128,35 @@
         };
 
         // =============================================================
-        // 2. MOTOR DEL JUEGO
+        // 2. MOTOR DEL JUEGO CON JOYSTICK Y MINIMAPA
         // =============================================================
         class GameScene extends Phaser.Scene {
             constructor() { super({ key: 'GameScene' }); }
 
+            preload() {
+                // Cargar Plugin del Joystick Virtual
+                this.load.plugin('rexvirtualjoystickplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/master/dist/rexvirtualjoystickplugin.min.js', true);
+            }
+
             create() {
-                const MAP_WIDTH = 3000;
-                const MAP_HEIGHT = 3000;
                 const currentMap = MAPS_DB[window.playerState.currentMapIndex];
 
-                // A) Definir límites del mundo físico
-                this.physics.world.setBounds(0, 0, MAP_WIDTH, MAP_HEIGHT);
+                // A) Límites y Fondo
+                this.physics.world.setBounds(0, 0, MAP_SIZE, MAP_SIZE);
+                this.add.rectangle(0, 0, MAP_SIZE, MAP_SIZE, currentMap.color).setOrigin(0);
 
-                // B) Ocean Grid (Fondo)
-                this.add.rectangle(0, 0, MAP_WIDTH, MAP_HEIGHT, currentMap.color).setOrigin(0);
-                
-                // Línea de borde del mapa
                 const border = this.add.graphics();
-                border.lineStyle(6, 0xffd700, 0.8);
-                border.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+                border.lineStyle(8, 0xffd700, 0.8);
+                border.strokeRect(0, 0, MAP_SIZE, MAP_SIZE);
 
-                // C) Portal para cambiar de Mapa (Ubicado a la derecha arriba)
-                this.portal = this.add.container(MAP_WIDTH - 200, 200);
+                // B) Portal de Viaje
+                this.portal = this.add.container(MAP_SIZE - 200, 200);
                 const portalRing = this.add.circle(0, 0, 35, 0xffd700, 0.5);
                 const portalCore = this.add.circle(0, 0, 20, 0xffffff);
-                const portalText = this.add.text(-30, 42, 'PORTAL', { font: '11px Arial', fill: '#ffd700', fontWeight: 'bold' });
-                this.portal.add([portalRing, portalCore, portalText]);
+                this.portal.add([portalRing, portalCore]);
                 this.physics.world.enable(this.portal);
 
-                // D) Jugador
+                // C) Barco del Jugador
                 this.player = this.add.container(400, 400);
                 const hull = this.add.triangle(0, 0, 0, -22, -12, 15, 12, 15, 0x5c3d11);
                 const sail = this.add.rectangle(0, 0, 5, 18, 0xffffff);
@@ -146,18 +164,29 @@
                 this.physics.world.enable(this.player);
                 this.player.body.setCollideWorldBounds(true);
 
-                // E) CÁMARA SIGUIENDO AL JUGADOR
-                this.cameras.main.setBounds(0, 0, MAP_WIDTH, MAP_HEIGHT);
+                // D) Cámara Siguiendo al Jugador
+                this.cameras.main.setBounds(0, 0, MAP_SIZE, MAP_SIZE);
                 this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
 
-                // F) Generación de Múltiples Enemigos
-                this.enemies = this.add.group();
+                // E) Joystick Táctil
+                this.joystick = this.plugins.get('rexvirtualjoystickplugin').add(this, {
+                    x: 80,
+                    y: this.scale.height - 80,
+                    radius: 50,
+                    base: this.add.circle(0, 0, 50, 0x000000, 0.5),
+                    thumb: this.add.circle(0, 0, 25, 0xffd700, 0.8),
+                    dir: '8dir',
+                    forceMin: 10
+                });
+
+                // F) Enemigos
+                this.enemies = [];
                 this.selectedEnemy = null;
                 this.reticle = this.add.graphics();
 
                 for (let i = 0; i < 8; i++) {
-                    const rx = Phaser.Math.Between(300, MAP_WIDTH - 300);
-                    const ry = Phaser.Math.Between(300, MAP_HEIGHT - 300);
+                    const rx = Phaser.Math.Between(300, MAP_SIZE - 300);
+                    const ry = Phaser.Math.Between(300, MAP_SIZE - 300);
                     
                     const enemy = this.add.container(rx, ry);
                     const enemySprite = this.add.circle(0, 0, 22, currentMap.enemyColor);
@@ -171,44 +200,75 @@
                         this.selectedEnemy = enemy;
                     });
 
-                    this.enemies.add(enemy);
+                    this.enemies.push(enemy);
                 }
 
-                // G) Navegación por Táctil
-                this.input.on('pointerdown', (pointer) => {
-                    this.selectedEnemy = null;
-                    const speed = SHIPS_DB[window.playerState.shipIndex].speed;
-                    
-                    // Convertir coordenadas de pantalla a coordenadas del mundo 3D/Map
-                    const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-                    
-                    this.physics.moveTo(this.player, worldPoint.x, worldPoint.y, speed);
-                    const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, worldPoint.x, worldPoint.y);
-                    this.player.setRotation(angle + Math.PI / 2);
-                });
-
-                // H) Detección de entrada al portal
+                // G) Cambio de mapa
                 this.physics.add.overlap(this.player, this.portal, () => {
                     if (window.playerState.currentMapIndex < MAPS_DB.length - 1) {
                         window.playerState.currentMapIndex++;
-                        this.scene.restart(); // Recargar la escena en el nuevo mapa
+                        this.scene.restart();
                         updateHUD();
                     }
                 });
+
+                // Inicializar Canvas de Minimapa
+                this.miniCanvas = document.getElementById('minimap-canvas');
+                this.miniCtx = this.miniCanvas.getContext('2d');
             }
 
             update() {
-                // Dibujar la mira Unitarget si hay un enemigo fijado
+                // Control por Joystick
+                if (this.joystick.force > 0) {
+                    const angle = this.joystick.angle; // Ángulo en grados
+                    const rad = Phaser.Math.DegToRad(angle);
+                    const speed = SHIPS_DB[window.playerState.shipIndex].speed;
+
+                    // Mover Barco
+                    this.player.body.setVelocity(Math.cos(rad) * speed, Math.sin(rad) * speed);
+                    // Rotar dirección visual del barco
+                    this.player.setRotation(rad + Math.PI / 2);
+                } else {
+                    this.player.body.setVelocity(0, 0);
+                }
+
+                // Mira Unitarget
                 this.reticle.clear();
                 if (this.selectedEnemy) {
                     this.reticle.lineStyle(2, 0xff0000);
                     this.reticle.strokeCircle(this.selectedEnemy.x, this.selectedEnemy.y, 32);
                 }
+
+                // Dibujar Minimapa
+                this.drawMinimap();
+            }
+
+            drawMinimap() {
+                const ctx = this.miniCtx;
+                const scale = 110 / MAP_SIZE;
+
+                ctx.clearRect(0, 0, 110, 110);
+
+                // Dibujar Enemigos (Puntos rojos)
+                ctx.fillStyle = '#ff0000';
+                this.enemies.forEach(e => {
+                    ctx.fillRect(e.x * scale, e.y * scale, 3, 3);
+                });
+
+                // Dibujar Portal (Punto Amarillo)
+                ctx.fillStyle = '#ffd700';
+                ctx.fillRect((MAP_SIZE - 200) * scale, 200 * scale, 5, 5);
+
+                // Dibujar Jugador (Punto Verde)
+                ctx.fillStyle = '#00ff00';
+                ctx.beginPath();
+                ctx.arc(this.player.x * scale, this.player.y * scale, 3, 0, Math.PI * 2);
+                ctx.fill();
             }
         }
 
         // =============================================================
-        // 3. INTERFAZ DE PUERTO Y SUBASTAS
+        // 3. INTERFAZ Y MODALES
         // =============================================================
         function openModal(type) {
             const modal = document.getElementById('modal');
@@ -272,12 +332,11 @@
                 <b>Nivel:</b> ${window.playerState.level} | <b>Oro:</b> <span id="gold-val">${window.playerState.gold}</span>
             `;
             document.getElementById('map-info').innerHTML = `
-                <b>Mapa:</b> ${currentMap.name} (${window.playerState.currentMapIndex + 1}/10)<br>
-                <span style="color:#ffd700; font-size:10px;">Busca el Portal para viajar</span>
+                <b>Mapa:</b> ${currentMap.name} (${window.playerState.currentMapIndex + 1}/10)
             `;
         }
 
-        // Inicializar Juego
+        // Configuración de Phaser
         const config = {
             type: Phaser.AUTO,
             width: window.innerWidth,
