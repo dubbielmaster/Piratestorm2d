@@ -1,833 +1,248 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pirates of the High Seas v0.2</title>
-    <!-- Three.js Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <style>
-        * {
-            box-sizing: border-box;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: none;
-        }
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #051329;
-            font-family: 'Segoe UI', Arial, sans-serif;
-        }
-        #webgl-container {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
-        
-        /* HUD ESTILO PIRATE STORM */
-        .hud {
-            position: absolute;
-            top: 12px;
-            left: 12px;
-            background: rgba(8, 14, 28, 0.88);
-            border: 2px solid #d4af37;
-            border-radius: 8px;
-            padding: 10px 14px;
-            color: #f3e5ab;
-            font-size: 13px;
-            font-weight: bold;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.8);
-            pointer-events: none;
-        }
-        .hud div { margin-bottom: 4px; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pirate Storm 2D</title>
 
-        .version-badge {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            background: rgba(0,0,0,0.6);
-            color: #d4af37;
-            padding: 4px 8px;
-            font-size: 10px;
-            border-radius: 4px;
-            border: 1px solid #d4af37;
-            pointer-events: none;
-        }
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
 
-        .port-indicator {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            background: rgba(212, 175, 55, 0.95);
-            color: #111;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 12px;
-            display: none;
-            box-shadow: 0 0 15px #ffd700;
-            cursor: pointer;
-        }
+html,body{
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#00131f;
+}
 
-        /* MODAL DEL PUERTO Y MERCADO */
-        #shop-modal {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 90%;
-            max-width: 420px;
-            background: #0b1326;
-            border: 3px solid #ffd700;
-            border-radius: 12px;
-            padding: 18px;
-            color: #fff;
-            display: none;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.95);
-            z-index: 100;
-        }
-        #shop-modal h2 {
-            margin-top: 0;
-            color: #ffd700;
-            text-align: center;
-            font-size: 18px;
-            border-bottom: 1px solid #334155;
-            padding-bottom: 8px;
-        }
-        .shop-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #17223b;
-            padding: 10px 12px;
-            border-radius: 6px;
-            margin-bottom: 8px;
-            border: 1px solid #334155;
-        }
-        .shop-item h4 { margin: 0 0 4px 0; color: #facc15; font-size: 13px; }
-        .shop-item p { margin: 0; font-size: 11px; color: #94a3b8; }
-        .buy-btn {
-            background: #10b981;
-            border: none;
-            color: white;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-weight: bold;
-            font-size: 11px;
-            cursor: pointer;
-        }
-        .buy-btn:disabled { background: #475569; opacity: 0.5; }
-        #close-shop {
-            width: 100%;
-            background: #ef4444;
-            border: none;
-            color: white;
-            padding: 10px;
-            border-radius: 6px;
-            font-weight: bold;
-            margin-top: 10px;
-        }
+canvas{
+    display:block;
+}
 
-        /* CONTROLES TÁCTILES */
-        .control-zone {
-            position: absolute;
-            bottom: 0;
-            width: 50%;
-            height: 50%;
-        }
-        #left-zone { left: 0; }
-        #right-zone { right: 0; }
+#info{
+    position:absolute;
+    top:10px;
+    left:10px;
+    color:white;
+    font-family:Arial;
+    font-size:18px;
+    text-shadow:2px 2px 4px black;
+}
+</style>
 
-        #joystick-base {
-            position: absolute;
-            width: 90px;
-            height: 90px;
-            border-radius: 50%;
-            background: rgba(0, 0, 0, 0.4);
-            border: 2px solid rgba(212, 175, 55, 0.7);
-            display: none;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-        }
-        #joystick-stick {
-            position: absolute;
-            width: 35px;
-            height: 35px;
-            border-radius: 50%;
-            background: radial-gradient(circle, #ffd700, #b8860b);
-            top: 27.5px;
-            left: 27.5px;
-        }
-
-        #fire-btn {
-            position: absolute;
-            bottom: 30px;
-            right: 30px;
-            width: 85px;
-            height: 85px;
-            border-radius: 50%;
-            background: radial-gradient(circle, #e63946, #800000);
-            border: 3px solid #ffd700;
-            color: #fff;
-            font-weight: bold;
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 6px 15px rgba(0,0,0,0.8);
-            text-transform: uppercase;
-        }
-    </style>
 </head>
 <body>
 
-    <div id="webgl-container"></div>
-    <div class="version-badge">v0.2 - Ocean & Ships Engine</div>
+<div id="info">
+🌊 Pirate Storm 2D Alpha
+</div>
 
-    <!-- UI HUD -->
-    <div class="hud">
-        <div>🚢 Navío: <span id="ship-name" style="color: #60a5fa;">Chalupa Pirata</span></div>
-        <div>❤️ Casco: <span id="hp-display" style="color: #4ade80;">2000/2000</span></div>
-        <div>🪙 Monedas: <span id="gold-display" style="color: #facc15;">250</span></div>
-        <div>⚔️ Potencia: <span id="cannon-level" style="color: #f97316;">Batería Nvl 1</span></div>
-    </div>
-
-    <div id="port-tag" class="port-indicator">⚓ Entrar al Puerto Seguro</div>
-
-    <!-- MERCADO / ASTILLERO -->
-    <div id="shop-modal">
-        <h2>⚓ Astillero & Mercado Pirata</h2>
-        <div id="shop-items"></div>
-        <button id="close-shop" onclick="toggleShop(false)">VOLVER AL MAR</button>
-    </div>
-
-    <!-- CONTROLES -->
-    <div id="left-zone" class="control-zone"></div>
-    <div id="right-zone" class="control-zone">
-        <div id="fire-btn">FUEGO</div>
-    </div>
-
-    <div id="joystick-base">
-        <div id="joystick-stick"></div>
-    </div>
+<canvas id="game"></canvas>
 
 <script>
-// --- CONFIGURACIÓN TRES.JS & ESCENA ---
-const container = document.getElementById('webgl-container');
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a1e36);
 
-// Cámara Isométrica
-const aspect = window.innerWidth / window.innerHeight;
-const d = 160;
-const camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 1, 1000);
-camera.position.set(200, 250, 200);
-camera.lookAt(0, 0, 0);
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
 
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-container.appendChild(renderer.domElement);
+function resize(){
+canvas.width=window.innerWidth;
+canvas.height=window.innerHeight;
+}
+window.onresize=resize;
+resize();
 
-// ILUMINACIÓN SOL Y LUZ AMBIENTAL
-const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.65);
-scene.add(ambientLight);
+let wave=0;
 
-const sunLight = new THREE.DirectionalLight(0xfffbeb, 1.1);
-sunLight.position.set(200, 350, 150);
-sunLight.castShadow = true;
-sunLight.shadow.mapSize.width = 2048;
-sunLight.shadow.mapSize.height = 2048;
-sunLight.shadow.camera.near = 0.5;
-sunLight.shadow.camera.far = 1000;
-const dShadow = 300;
-sunLight.shadow.camera.left = -dShadow;
-sunLight.shadow.camera.right = dShadow;
-sunLight.shadow.camera.top = dShadow;
-sunLight.shadow.camera.bottom = -dShadow;
-scene.add(sunLight);
-
-// --- SHADER SHADER DEL OCÉANO DINÁMICO (Versión 0.2) ---
-const oceanVertexShader = `
-    uniform float uTime;
-    varying vec2 vUv;
-    varying float vElevation;
-    varying vec3 vWorldPosition;
-
-    void main() {
-        vUv = uv;
-        vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-        vWorldPosition = worldPosition.xyz;
-
-        // Cálculo de Olas Animadas
-    float wave1 =
-    sin(worldPosition.x * 0.018 + uTime * 0.8) *
-    2.2;
-
-float wave2 =
-    cos(worldPosition.z * 0.025 + uTime * 1.2) *
-    1.5;
-
-float wave3 =
-    sin((worldPosition.x + worldPosition.z) * 0.035 + uTime * 1.8) *
-    0.9;
-
-float wave4 =
-    sin(worldPosition.x * 0.08 - uTime * 3.5) *
-    0.35;
-
-float elevation =
-    wave1 +
-    wave2 +
-    wave3 +
-    wave4;
-
-const oceanFragmentShader = `
-    uniform float uTime;
-    uniform vec3 uColorShallow;
-    uniform vec3 uColorDeep;
-    uniform vec3 uColorFoam;
-
-    varying vec2 vUv;
-    varying float vElevation;
-    varying vec3 vWorldPosition;
-
-    void main() {
-        // Mezcla de agua turquesa en orillas y azul profundo en altamar
-        float mixFactor = smoothstep(-2.0, 2.5, vElevation);
-        vec3 waterColor = mix(uColorDeep, uColorShallow, mixFactor);
-
-        // Espuma sintética en las crestas de las olas
-        float foam = smoothstep(1.8, 2.8, vElevation);
-        waterColor = mix(waterColor, uColorFoam, foam * 0.6);
-
-        // Brillo Especular (Reflejo del Sol)
-        vec3 lightDir = normalize(vec3(0.5, 1.0, 0.3));
-        vec3 viewDir = normalize(cameraPosition - vWorldPosition);
-        vec3 halfVector = normalize(lightDir + viewDir);
-        float NdotH = max(0.0, dot(vec3(0.0, 1.0, 0.0), halfVector));
-        float specular = pow(NdotH, 64.0) * 0.4;
-
-        gl_FragColor = vec4(waterColor + vec3(specular), 0.92);
-    }
-`;
-
-const oceanGeometry = new THREE.PlaneGeometry(3200, 3200, 128, 128);
-const oceanUniforms = {
-    uTime: { value: 0 },
-    uColorShallow: { value: new THREE.Color(0x34d399) }, // Turquesa
-    uColorDeep: { value: new THREE.Color(0x0b3d91) },    // Azul Marino
-    uColorFoam: { value: new THREE.Color(0xffffff) }     // Espuma
+const ship={
+x:canvas.width/2,
+y:canvas.height/2,
+angle:0,
+speed:3,
+targetX:canvas.width/2,
+targetY:canvas.height/2
 };
 
-const oceanMaterial = new THREE.ShaderMaterial({
-    vertexShader: oceanVertexShader,
-    fragmentShader: oceanFragmentShader,
-    uniforms: oceanUniforms,
-    transparent: true
+const stars=[];
+
+for(let i=0;i<250;i++){
+
+stars.push({
+
+x:Math.random()*canvas.width,
+y:Math.random()*canvas.height,
+r:Math.random()*2,
+a:Math.random(),
+dir:Math.random()>0.5?1:-1
+
 });
 
-const ocean = new THREE.Mesh(oceanGeometry, oceanMaterial);
-ocean.rotation.x = -Math.PI / 2;
-scene.add(ocean);
-
-// --- MODELADO DE BARCOS EN LOW-POLY (Chalupa, Bergantín, Bergantín de Guerra) ---
-function buildShipMesh(type = 'chalupa', isDarkSails = true) {
-    const group = new THREE.Group();
-
-    // Materiales
-    const woodDark = new THREE.MeshStandardMaterial({ color: 0x3d2314, roughness: 0.7 });
-    const woodLight = new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.6 });
-    const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8, roughness: 0.3 });
-    const sailMat = new THREE.MeshStandardMaterial({ color: isDarkSails ? 0x22252a : 0xf8fafc, side: THREE.DoubleSide });
-    const ironMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9, roughness: 0.2 });
-
-    if (type === 'chalupa') {
-        // CHALUPA: Ligera, 1 mástil, ágil
-        const hullGeo = new THREE.BoxGeometry(10, 7, 22);
-        const hull = new THREE.Mesh(hullGeo, woodLight);
-        hull.position.y = 2.5;
-        hull.castShadow = true;
-        group.add(hull);
-
-        // Mástil Único
-        const mastGeo = new THREE.CylinderGeometry(0.5, 0.7, 18);
-        const mast = new THREE.Mesh(mastGeo, woodDark);
-        mast.position.set(0, 11, 0);
-        group.add(mast);
-
-        // Vela Latina
-        const sailGeo = new THREE.ConeGeometry(8, 14, 3);
-        const sail = new THREE.Mesh(sailGeo, sailMat);
-        sail.rotation.z = Math.PI / 2;
-        sail.position.set(0, 12, 1);
-        group.add(sail);
-
-    } else if (type === 'bergantin') {
-        // BERGANTÍN: 2 mástiles, cañones visibles, bauprés
-        const hullGeo = new THREE.BoxGeometry(14, 9, 32);
-        const hull = new THREE.Mesh(hullGeo, woodDark);
-        hull.position.y = 3.5;
-        hull.castShadow = true;
-        group.add(hull);
-
-        // Bauprés (Palo frontal)
-        const bowGeo = new THREE.CylinderGeometry(0.4, 0.6, 12);
-        const bow = new THREE.Mesh(bowGeo, woodDark);
-        bow.rotation.x = Math.PI / 3;
-        bow.position.set(0, 5, 18);
-        group.add(bow);
-
-        // 2 Mástiles con Velas
-        [-6, 6].forEach(zPos => {
-            const mastGeo = new THREE.CylinderGeometry(0.7, 0.9, 24);
-            const mast = new THREE.Mesh(mastGeo, woodDark);
-            mast.position.set(0, 14, zPos);
-            group.add(mast);
-
-            const sailGeo = new THREE.BoxGeometry(0.4, 11, 12);
-            const sail = new THREE.Mesh(sailGeo, sailMat);
-            sail.position.set(0, 15, zPos);
-            group.add(sail);
-        });
-
-        // Batería de Cañones en Babor y Estribor
-        [-4, 0, 4].forEach(z => {
-            [-7.2, 7.2].forEach(x => {
-                const cannonGeo = new THREE.CylinderGeometry(0.4, 0.5, 3);
-                const cannon = new THREE.Mesh(cannonGeo, ironMat);
-                cannon.rotation.z = Math.PI / 2;
-                cannon.position.set(x, 4, z);
-                group.add(cannon);
-            });
-        });
-
-    } else if (type === 'guerra') {
-        // BERGANTÍN DE GUERRA: Imponente, 3 mástiles, detalles dorados, doble cubierta de cañones
-        const hullGeo = new THREE.BoxGeometry(18, 12, 42);
-        const hull = new THREE.Mesh(hullGeo, woodDark);
-        hull.position.y = 4.5;
-        hull.castShadow = true;
-        group.add(hull);
-
-        // Decoraciones Doradas
-        const trimGeo = new THREE.BoxGeometry(18.6, 1.5, 42.2);
-        const trim = new THREE.Mesh(trimGeo, goldMat);
-        trim.position.y = 8;
-        group.add(trim);
-
-        // 3 Mástiles Principales
-        [-12, 0, 12].forEach(zPos => {
-            const mastGeo = new THREE.CylinderGeometry(0.8, 1.1, 30);
-            const mast = new THREE.Mesh(mastGeo, woodDark);
-            mast.position.set(0, 18, zPos);
-            group.add(mast);
-
-            // Doble Vela por Mástil
-            [14, 22].forEach(yPos => {
-                const sailGeo = new THREE.BoxGeometry(0.5, 7, 14);
-                const sail = new THREE.Mesh(sailGeo, sailMat);
-                sail.position.set(0, yPos, zPos);
-                group.add(sail);
-            });
-        });
-
-        // Batería Pesada de Cañones
-        [-10, -5, 0, 5, 10].forEach(z => {
-            [-9.3, 9.3].forEach(x => {
-                const cannonGeo = new THREE.CylinderGeometry(0.5, 0.6, 3.5);
-                const cannon = new THREE.Mesh(cannonGeo, ironMat);
-                cannon.rotation.z = Math.PI / 2;
-                cannon.position.set(x, 5, z);
-                group.add(cannon);
-            });
-        });
-    }
-
-    return group;
 }
 
-// ESTADO DEL JUGADOR
-let player = {
-    shipType: 'chalupa',
-    mesh: null,
-    x: 0,
-    z: 0,
-    targetX: null,
-    targetZ: null,
-    angle: 0,
-    speed: 0,
-    maxSpeed: 2.2,
-    hp: 2000,
-    maxHp: 2000,
-    gold: 250,
-    cannonLevel: 1,
-    damage: 150,
-    range: 190,
-    fireCooldown: 0,
-    radius: 12
-};
+function drawOcean(){
 
-let enemies = [];
-let cannonballs = [];
-let islands = [];
-let selectedEnemy = null;
-let joystick = { active: false, startX: 0, startY: 0, currentX: 0, currentY: 0, angle: 0, distance: 0 };
-let inPortZone = false;
+const g=ctx.createLinearGradient(0,0,0,canvas.height);
 
-// Instanciar Barco Inicial
-player.mesh = buildShipMesh('chalupa', true);
-scene.add(player.mesh);
+g.addColorStop(0,"#22c7ff");
+g.addColorStop(.5,"#0099dd");
+g.addColorStop(1,"#006699");
 
-// CREAR ISLAS CON ESPUMA Y COSTA
-for (let i = 0; i < 8; i++) {
-    const ix = (Math.random() - 0.5) * 1800;
-    const iz = (Math.random() - 0.5) * 1800;
-    const radius = 40 + Math.random() * 35;
-    const isPort = (i === 0);
+ctx.fillStyle=g;
 
-    const islandGroup = new THREE.Group();
+ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    // Isla
-    const geo = new THREE.CylinderGeometry(radius, radius + 12, 14, 24);
-    const mat = new THREE.MeshStandardMaterial({ color: isPort ? 0xd4af37 : 0x2d6a4f, roughness: 0.9 });
-    const islandMesh = new THREE.Mesh(geo, mat);
-    islandMesh.position.set(ix, 2, iz);
-    islandMesh.receiveShadow = true;
-    islandGroup.add(islandMesh);
+ctx.strokeStyle="rgba(255,255,255,.12)";
+ctx.lineWidth=2;
 
-    // Anillo de Espuma / Orilla Turquesa
-    const foamGeo = new THREE.RingGeometry(radius, radius + 16, 32);
-    const foamMat = new THREE.MeshBasicMaterial({ color: 0xccfbf1, side: THREE.DoubleSide, transparent: true, opacity: 0.6 });
-    const foamMesh = new THREE.Mesh(foamGeo, foamMat);
-    foamMesh.rotation.x = -Math.PI / 2;
-    foamMesh.position.set(ix, 1, iz);
-    islandGroup.add(foamMesh);
+for(let y=0;y<canvas.height+40;y+=35){
 
-    if (isPort) {
-        const portGeo = new THREE.BoxGeometry(16, 24, 16);
-        const portMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc });
-        const portBuilding = new THREE.Mesh(portGeo, portMat);
-        portBuilding.position.set(ix, 18, iz);
-        islandGroup.add(portBuilding);
-    }
+ctx.beginPath();
 
-    scene.add(islandGroup);
-    islands.push({ x: ix, z: iz, radius: radius + 14, isPort: isPort });
+for(let x=0;x<canvas.width+30;x+=25){
+
+let yy=y+Math.sin((x*.02)+wave+y*.05)*5;
+
+if(x==0)
+ctx.moveTo(x,yy);
+else
+ctx.lineTo(x,yy);
+
 }
 
-// ENEMIGOS PATRULLANDO
-for (let i = 0; i < 5; i++) spawnEnemy();
+ctx.stroke();
 
-function spawnEnemy() {
-    const angle = Math.random() * Math.PI * 2;
-    const dist = 350 + Math.random() * 450;
-    const ex = player.x + Math.cos(angle) * dist;
-    const ez = player.z + Math.sin(angle) * dist;
-
-    const mesh = buildShipMesh('bergantin', false);
-    mesh.position.set(ex, 0, ez);
-    scene.add(mesh);
-
-    enemies.push({
-        mesh: mesh,
-        x: ex,
-        z: ez,
-        hp: 1800,
-        maxHp: 1800,
-        damage: 90,
-        radius: 14
-    });
 }
 
-// ASTILLERO / MEJORAS (Versión 0.2)
-function updateShopUI() {
-    const container = document.getElementById('shop-items');
-    container.innerHTML = `
-        <div class="shop-item">
-            <div>
-                <h4>Comprar Bergantín</h4>
-                <p>Salud: 4000 | Cañones Laterales</p>
-            </div>
-            <button class="buy-btn" ${player.gold < 300 || player.shipType === 'bergantin' || player.shipType === 'guerra' ? 'disabled' : ''} onclick="buyShip('bergantin', 300, 4000, 220)">300 🪙</button>
-        </div>
-        <div class="shop-item">
-            <div>
-                <h4>Comprar Bergantín de Guerra</h4>
-                <p>Salud: 7500 | Batería Pesada</p>
-            </div>
-            <button class="buy-btn" ${player.gold < 700 || player.shipType === 'guerra' ? 'disabled' : ''} onclick="buyShip('guerra', 700, 7500, 380)">700 🪙</button>
-        </div>
-        <div class="shop-item">
-            <div>
-                <h4>Reparar Casco</h4>
-                <p>Restaura la salud al máximo</p>
-            </div>
-            <button class="buy-btn" ${player.gold < 50 ? 'disabled' : ''} onclick="repairShip(50)">50 🪙</button>
-        </div>
-    `;
 }
 
-function buyShip(type, cost, hp, damage) {
-    if (player.gold >= cost) {
-        player.gold -= cost;
-        player.shipType = type;
-        player.maxHp = hp;
-        player.hp = hp;
-        player.damage = damage;
+function drawSparkles(){
 
-        scene.remove(player.mesh);
-        player.mesh = buildShipMesh(type, true);
-        scene.add(player.mesh);
+for(const s of stars){
 
-        updateUI();
-        updateShopUI();
-    }
+s.a+=0.01*s.dir;
+
+if(s.a>1){
+s.dir=-1;
 }
 
-function repairShip(cost) {
-    if (player.gold >= cost) {
-        player.gold -= cost;
-        player.hp = player.maxHp;
-        updateUI();
-        updateShopUI();
-    }
+if(s.a<0){
+s.dir=1;
 }
 
-function toggleShop(show) {
-    document.getElementById('shop-modal').style.display = show ? 'block' : 'none';
-    if (show) updateShopUI();
+ctx.beginPath();
+
+ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+
+ctx.fillStyle="rgba(255,255,255,"+(s.a*.4)+")";
+
+ctx.fill();
+
 }
 
-function updateUI() {
-    const names = { chalupa: 'Chalupa Pirata', bergantin: 'Bergantín de Exploración', guerra: 'Bergantín de Guerra' };
-    document.getElementById('ship-name').innerText = names[player.shipType];
-    document.getElementById('hp-display').innerText = `${player.hp}/${player.maxHp}`;
-    document.getElementById('gold-display').innerText = player.gold;
-    document.getElementById('cannon-level').innerText = `Daño: ${player.damage}`;
 }
 
-// CONTROLES TÁCTILES
-const leftZone = document.getElementById('left-zone');
-const joyBase = document.getElementById('joystick-base');
-const joyStick = document.getElementById('joystick-stick');
-const fireBtn = document.getElementById('fire-btn');
+function drawShip(){
 
-leftZone.addEventListener('touchstart', (e) => {
-    const touch = e.touches[0];
-    joystick.active = true;
-    joystick.startX = touch.clientX;
-    joystick.startY = touch.clientY;
-    joyBase.style.left = `${touch.clientX}px`;
-    joyBase.style.top = `${touch.clientY}px`;
-    joyBase.style.display = 'block';
-    player.targetX = null;
+ctx.save();
+
+ctx.translate(ship.x,ship.y);
+
+ctx.rotate(ship.angle);
+
+ctx.strokeStyle="rgba(255,255,255,.25)";
+ctx.lineWidth=4;
+
+ctx.beginPath();
+ctx.moveTo(-45,0);
+ctx.lineTo(-15,0);
+ctx.stroke();
+
+ctx.fillStyle="#5e3814";
+
+ctx.beginPath();
+ctx.moveTo(25,0);
+ctx.lineTo(-18,-12);
+ctx.lineTo(-8,0);
+ctx.lineTo(-18,12);
+ctx.closePath();
+ctx.fill();
+
+ctx.fillStyle="#d2b48c";
+
+ctx.fillRect(-2,-15,4,30);
+
+ctx.fillStyle="white";
+
+ctx.beginPath();
+ctx.moveTo(2,-14);
+ctx.lineTo(18,0);
+ctx.lineTo(2,14);
+ctx.closePath();
+ctx.fill();
+
+ctx.restore();
+
+}
+
+function update(){
+
+wave+=0.015;
+
+let dx=ship.targetX-ship.x;
+let dy=ship.targetY-ship.y;
+
+let dist=Math.sqrt(dx*dx+dy*dy);
+
+if(dist>3){
+
+ship.angle=Math.atan2(dy,dx);
+
+ship.x+=Math.cos(ship.angle)*ship.speed;
+
+ship.y+=Math.sin(ship.angle)*ship.speed;
+
+}
+
+}
+
+function render(){
+
+update();
+
+drawOcean();
+
+drawSparkles();
+
+drawShip();
+
+requestAnimationFrame(render);
+
+}
+
+canvas.addEventListener("touchstart",e=>{
+
+let t=e.touches[0];
+
+ship.targetX=t.clientX;
+ship.targetY=t.clientY;
+
 });
 
-leftZone.addEventListener('touchmove', (e) => {
-    if (!joystick.active) return;
-    const touch = e.touches[0];
-    const dx = touch.clientX - joystick.startX;
-    const dy = touch.clientY - joystick.startY;
-    const dist = Math.min(Math.hypot(dx, dy), 40);
-    const angle = Math.atan2(dy, dx);
+canvas.addEventListener("touchmove",e=>{
 
-    joystick.angle = angle;
-    joystick.distance = dist / 40;
-    joyStick.style.transform = `translate(${Math.cos(angle) * dist}px, ${Math.sin(angle) * dist}px)`;
+let t=e.touches[0];
+
+ship.targetX=t.clientX;
+ship.targetY=t.clientY;
+
 });
 
-leftZone.addEventListener('touchend', () => {
-    joystick.active = false;
-    joystick.distance = 0;
-    joyBase.style.display = 'none';
-});
+render();
 
-window.addEventListener('pointerdown', (e) => {
-    if (e.clientY > window.innerHeight * 0.5 && e.clientX < window.innerWidth * 0.5) return;
-    if (e.target.id === 'fire-btn' || e.target.closest('#shop-modal')) return;
-
-    const mouse = new THREE.Vector2((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(mouse, camera);
-
-    const intersects = raycaster.intersectObjects(scene.children, true);
-    let targetEnemy = null;
-
-    intersects.forEach(hit => {
-        enemies.forEach(enemy => {
-            if (enemy.mesh === hit.object || enemy.mesh.children.includes(hit.object)) targetEnemy = enemy;
-        });
-    });
-
-    if (targetEnemy) {
-        selectedEnemy = targetEnemy;
-    } else {
-        const oceanHit = raycaster.intersectObject(ocean);
-        if (oceanHit.length > 0) {
-            player.targetX = oceanHit[0].point.x;
-            player.targetZ = oceanHit[0].point.z;
-        }
-    }
-
-    if (inPortZone && e.target.id === 'port-tag') toggleShop(true);
-});
-
-fireBtn.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    shootCannon(player, selectedEnemy);
-});
-
-function shootCannon(shooter, target) {
-    if (shooter.fireCooldown > 0 || !target) return;
-
-    const dist = Math.hypot(target.x - shooter.x, target.z - shooter.z);
-    if (dist > shooter.range) return;
-
-    const geo = new THREE.SphereGeometry(2.5, 8, 8);
-    const mat = new THREE.MeshBasicMaterial({ color: 0x1e293b });
-    const ballMesh = new THREE.Mesh(geo, mat);
-    ballMesh.position.set(shooter.x, 6, shooter.z);
-    scene.add(ballMesh);
-
-    cannonballs.push({
-        mesh: ballMesh,
-        startX: shooter.x,
-        startZ: shooter.z,
-        target: target,
-        damage: shooter.damage,
-        progress: 0,
-        isPlayer: (shooter === player)
-    });
-
-    shooter.fireCooldown = 25;
-}
-
-// BUCLE PRINCIPAL (ANIMACIÓN & FÍSICAS)
-let clock = new THREE.Clock();
-
-function animate() {
-    requestAnimationFrame(animate);
-
-    const elapsedTime = clock.getElapsedTime();
-    oceanUniforms.uTime.value = elapsedTime;
-
-    if (player.fireCooldown > 0) player.fireCooldown--;
-
-    let moveX = 0;
-    let moveZ = 0;
-
-    if (joystick.active && joystick.distance > 0.1) {
-        moveX = Math.sin(joystick.angle + Math.PI / 4) * player.maxSpeed * joystick.distance;
-        moveZ = Math.cos(joystick.angle + Math.PI / 4) * player.maxSpeed * joystick.distance;
-        player.angle = Math.atan2(moveX, moveZ);
-    } else if (player.targetX !== null) {
-        const dx = player.targetX - player.x;
-        const dz = player.targetZ - player.z;
-        const dist = Math.hypot(dx, dz);
-
-        if (dist > 5) {
-            moveX = (dx / dist) * player.maxSpeed;
-            moveZ = (dz / dist) * player.maxSpeed;
-            player.angle = Math.atan2(moveX, moveZ);
-        } else {
-            player.targetX = null;
-        }
-    }
-
-    // DESLIZAMIENTO EN ISLAS (Colisión pulida sin atascos)
-    let nextX = player.x + moveX;
-    let nextZ = player.z + moveZ;
-
-    inPortZone = false;
-    islands.forEach(island => {
-        const dist = Math.hypot(nextX - island.x, nextZ - island.z);
-        if (dist < island.radius + player.radius) {
-            const pushAngle = Math.atan2(nextZ - island.z, nextX - island.x);
-            nextX = island.x + Math.cos(pushAngle) * (island.radius + player.radius);
-            nextZ = island.z + Math.sin(pushAngle) * (island.radius + player.radius);
-        }
-
-        if (island.isPort && dist < island.radius + 35) {
-            inPortZone = true;
-        }
-    });
-
-    document.getElementById('port-tag').style.display = inPortZone ? 'block' : 'none';
-
-    player.x = nextX;
-    player.z = nextZ;
-
-    // Balanceo suave del barco sobre las olas
-    const pitch = Math.sin(elapsedTime * 2) * 0.05;
-    const roll = Math.cos(elapsedTime * 1.5) * 0.05;
-
-    player.mesh.position.set(player.x, Math.sin(elapsedTime * 2) * 0.8, player.z);
-    player.mesh.rotation.set(pitch, player.angle, roll);
-
-    // Cámara Isométrica
-    camera.position.x = player.x + 200;
-    camera.position.z = player.z + 200;
-    camera.lookAt(player.x, 0, player.z);
-
-    // Balas de Cañón
-    for (let i = cannonballs.length - 1; i >= 0; i--) {
-        let b = cannonballs[i];
-        b.progress += 0.045;
-
-        if (b.progress >= 1) {
-            if (b.target) {
-                b.target.hp -= b.damage;
-                if (!b.isPlayer) {
-                    player.hp = Math.max(0, player.hp - b.damage);
-                    updateUI();
-                }
-            }
-            scene.remove(b.mesh);
-            cannonballs.splice(i, 1);
-        } else {
-            b.mesh.position.x = THREE.MathUtils.lerp(b.startX, b.target.x, b.progress);
-            b.mesh.position.z = THREE.MathUtils.lerp(b.startZ, b.target.z, b.progress);
-            b.mesh.position.y = Math.sin(b.progress * Math.PI) * 22 + 4;
-        }
-    }
-
-    // IA Enemigos
-    enemies.forEach((e, index) => {
-        const dist = Math.hypot(player.x - e.x, player.z - e.z);
-
-        if (dist < 230) {
-            e.angle = Math.atan2(player.x - e.x, player.z - e.z);
-            e.mesh.rotation.y = e.angle;
-
-            if (dist > 95) {
-                e.x += Math.sin(e.angle) * 0.9;
-                e.z += Math.cos(e.angle) * 0.9;
-                e.mesh.position.set(e.x, 0, e.z);
-            } else {
-                shootCannon(e, player);
-            }
-        }
-
-        if (e.hp <= 0) {
-            scene.remove(e.mesh);
-            player.gold += 120;
-            updateUI();
-            if (selectedEnemy === e) selectedEnemy = null;
-            enemies.splice(index, 1);
-            setTimeout(() => spawnEnemy(), 6000);
-        }
-    });
-
-    renderer.render(scene, camera);
-}
-
-animate();
 </script>
+
 </body>
 </html>
