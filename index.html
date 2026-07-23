@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pirate Storm Mobile 2D</title>
+    <title>Pirate Storm Mobile - Puerto & Cañones</title>
     <style>
         * {
             box-sizing: border-box;
@@ -26,27 +26,100 @@
             height: 100%;
         }
         
-        /* UI PIRATE STORM STYLE */
+        /* UI HUD */
         .hud {
             position: absolute;
-            top: 12px;
-            left: 12px;
-            background: rgba(15, 23, 42, 0.85);
+            top: 10px;
+            left: 10px;
+            background: rgba(15, 23, 42, 0.88);
             border: 2px solid #b8860b;
             border-radius: 8px;
-            padding: 10px 15px;
+            padding: 10px 14px;
             color: #f3e5ab;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: bold;
             box-shadow: 0 4px 10px rgba(0,0,0,0.6);
             pointer-events: none;
         }
-        .hud div {
-            margin-bottom: 4px;
-        }
-        .hud div:last-child { margin-bottom: 0; }
+        .hud div { margin-bottom: 3px; }
 
-        /* Zonas de Control */
+        .port-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(212, 175, 55, 0.9);
+            color: #111;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 12px;
+            display: none;
+            box-shadow: 0 0 10px #ffd700;
+        }
+
+        /* Modal del Mercado / Puerto */
+        #shop-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 88%;
+            max-width: 400px;
+            background: #111827;
+            border: 3px solid #ffd700;
+            border-radius: 12px;
+            padding: 18px;
+            color: #fff;
+            display: none;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+            z-index: 100;
+        }
+        #shop-modal h2 {
+            margin-top: 0;
+            color: #ffd700;
+            text-align: center;
+            font-size: 20px;
+            border-bottom: 1px solid #374151;
+            padding-bottom: 8px;
+        }
+        .shop-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #1f2937;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            border: 1px solid #374151;
+        }
+        .shop-item h4 { margin: 0 0 4px 0; color: #facc15; font-size: 14px; }
+        .shop-item p { margin: 0; font-size: 11px; color: #9ca3af; }
+        .buy-btn {
+            background: #10b981;
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .buy-btn:disabled {
+            background: #4b5563;
+            opacity: 0.6;
+        }
+        #close-shop {
+            width: 100%;
+            background: #ef4444;
+            border: none;
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        /* Controles */
         .control-zone {
             position: absolute;
             bottom: 0;
@@ -77,7 +150,6 @@
             left: 27.5px;
         }
 
-        /* Botón de Disparo */
         #fire-btn {
             position: absolute;
             bottom: 30px;
@@ -95,11 +167,6 @@
             justify-content: center;
             box-shadow: 0 6px 12px rgba(0,0,0,0.6);
             text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        #fire-btn:active {
-            transform: scale(0.95);
-            background: radial-gradient(circle, #bd2130, #500000);
         }
     </style>
 </head>
@@ -107,17 +174,27 @@
 
     <canvas id="gameCanvas"></canvas>
 
-    <!-- Interfaz del Jugador -->
+    <!-- UI -->
     <div class="hud">
-        <div>🚢 Salud: <span id="hp-display" style="color: #4ade80;">100/100</span></div>
+        <div>🚢 Barco: <span id="ship-name" style="color: #60a5fa;">Canoa Pirata</span></div>
+        <div>❤️ Salud: <span id="hp-display" style="color: #4ade80;">100/100</span></div>
         <div>🪙 Oro: <span id="gold-display" style="color: #facc15;">0</span></div>
-        <div>☠️ Hundidos: <span id="score-display" style="color: #f87171;">0</span></div>
+        <div>⚔️ Nivel Cañones: <span id="cannon-level" style="color: #f97316;">Nvl 1</span></div>
     </div>
 
-    <!-- Controles Táctiles -->
+    <div id="port-tag" class="port-indicator">⚓ Cerca de Puerto (Toca Mercado)</div>
+
+    <!-- Tienda / Mercado -->
+    <div id="shop-modal">
+        <h2>⚓ Mercado de Puerto Pirata</h2>
+        <div id="shop-items"></div>
+        <button id="close-shop" onclick="toggleShop(false)">CERRAR MERCADO</button>
+    </div>
+
+    <!-- Controles -->
     <div id="left-zone" class="control-zone"></div>
     <div id="right-zone" class="control-zone">
-        <div id="fire-btn">DISPARAR</div>
+        <div id="fire-btn">ATACAR</div>
     </div>
 
     <div id="joystick-base">
@@ -135,10 +212,17 @@ function resizeCanvas() {
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
-// --- ESTADO DEL JUEGO ---
+// --- MODELOS DE BARCOS COMERCIABLES ---
+const SHIPS_CATALOG = [
+    { id: 'boat_1', name: 'Sloop Ligero', price: 100, maxHp: 180, speed: 3.2, color: '#2a9d8f' },
+    { id: 'boat_2', name: 'Bergantín de Caza', price: 250, maxHp: 320, speed: 3.5, color: '#3b82f6' },
+    { id: 'boat_3', name: 'Galeón de Guerra', price: 500, maxHp: 600, speed: 3.0, color: '#8b5cf6' }
+];
+
+// --- JUGADOR Y ESTADO ---
 let player = {
-    x: 0,
-    y: 0,
+    x: 1000,
+    y: 1000,
     targetX: null,
     targetY: null,
     angle: 0,
@@ -146,10 +230,13 @@ let player = {
     maxSpeed: 2.8,
     hp: 100,
     maxHp: 100,
-    gold: 0,
-    score: 0,
+    gold: 50, // Oro inicial para probar
+    cannonLevel: 1,
+    cannonDamage: 18,
+    shipName: 'Canoa Pirata',
+    shipColor: '#2a9d8f',
     fireCooldown: 0,
-    range: 300
+    range: 350
 };
 
 let selectedEnemy = null;
@@ -159,54 +246,146 @@ let particles = [];
 let damageTexts = [];
 let lootChests = [];
 let islands = [];
+let ports = [];
+let inPortZone = false;
 
 let joystick = { active: false, startX: 0, startY: 0, currentX: 0, currentY: 0, angle: 0, distance: 0 };
 let waveOffset = 0;
 
-player.x = 1000;
-player.y = 1000;
+// Crear Mapa e Islas con Puertos
+for (let i = 0; i < 10; i++) {
+    let ix = Math.random() * 2600 - 300;
+    let iy = Math.random() * 2600 - 300;
+    let isPort = (i < 2); // 2 de las islas tienen un puerto comercial
 
-// Generar Islas fijas en el mapa
-for (let i = 0; i < 12; i++) {
-    islands.push({
-        x: Math.random() * 3000 - 500,
-        y: Math.random() * 3000 - 500,
-        radius: 40 + Math.random() * 50
-    });
+    islands.push({ x: ix, y: iy, radius: 50 + Math.random() * 40, isPort });
+    if (isPort) {
+        ports.push({ x: ix, y: iy, radius: 120 });
+    }
 }
 
-// Generar enemigos iniciales
-for (let i = 0; i < 6; i++) {
-    spawnEnemy();
-}
+for (let i = 0; i < 6; i++) spawnEnemy();
 
 function spawnEnemy() {
     const angle = Math.random() * Math.PI * 2;
-    const dist = 400 + Math.random() * 500;
+    const dist = 450 + Math.random() * 500;
     enemies.push({
         id: Math.random(),
         x: player.x + Math.cos(angle) * dist,
         y: player.y + Math.sin(angle) * dist,
         angle: Math.random() * Math.PI * 2,
-        hp: 60,
-        maxHp: 60,
-        speed: 1.5,
+        hp: 70,
+        maxHp: 70,
+        speed: 1.6,
         fireCooldown: 0,
-        range: 220
+        range: 260
     });
 }
 
-// --- CONTROLES Y TÁCTIL ---
+// --- MERCADO Y COMPRAS ---
+function updateShopUI() {
+    const container = document.getElementById('shop-items');
+    container.innerHTML = '';
+
+    // Opción 1: Mejorar Cañones
+    const cannonPrice = player.cannonLevel * 75;
+    container.innerHTML += `
+        <div class="shop-item">
+            <div>
+                <h4>Mejorar Cañones (Nvl ${player.cannonLevel + 1})</h4>
+                <p>Aumenta el daño a +${player.cannonDamage + 8}</p>
+            </div>
+            <button class="buy-btn" ${player.gold < cannonPrice ? 'disabled' : ''} onclick="buyCannonUpgrade(${cannonPrice})">
+                ${cannonPrice} 🪙
+            </button>
+        </div>
+    `;
+
+    // Opción 2: Reparar Barco
+    const repairPrice = Math.floor((player.maxHp - player.hp) * 0.5);
+    if (repairPrice > 0) {
+        container.innerHTML += `
+            <div class="shop-item">
+                <div>
+                    <h4>Reparar Casco</h4>
+                    <p>Restaura salud al máximo</p>
+                </div>
+                <button class="buy-btn" ${player.gold < repairPrice ? 'disabled' : ''} onclick="repairShip(${repairPrice})">
+                    ${repairPrice} 🪙
+                </button>
+            </div>
+        `;
+    }
+
+    // Comprar Barcos
+    SHIPS_CATALOG.forEach(ship => {
+        container.innerHTML += `
+            <div class="shop-item">
+                <div>
+                    <h4>${ship.name}</h4>
+                    <p>Salud: ${ship.maxHp} HP | Vel: ${ship.speed}</p>
+                </div>
+                <button class="buy-btn" ${player.gold < ship.price ? 'disabled' : ''} onclick="buyShip('${ship.id}')">
+                    ${ship.price} 🪙
+                </button>
+            </div>
+        `;
+    });
+}
+
+function toggleShop(show) {
+    document.getElementById('shop-modal').style.display = show ? 'block' : 'none';
+    if (show) updateShopUI();
+}
+
+function buyCannonUpgrade(cost) {
+    if (player.gold >= cost) {
+        player.gold -= cost;
+        player.cannonLevel++;
+        player.cannonDamage += 8;
+        updateUI();
+        updateShopUI();
+    }
+}
+
+function repairShip(cost) {
+    if (player.gold >= cost) {
+        player.gold -= cost;
+        player.hp = player.maxHp;
+        updateUI();
+        updateShopUI();
+    }
+}
+
+function buyShip(shipId) {
+    const ship = SHIPS_CATALOG.find(s => s.id === shipId);
+    if (ship && player.gold >= ship.price) {
+        player.gold -= ship.price;
+        player.shipName = ship.name;
+        player.maxHp = ship.maxHp;
+        player.hp = ship.maxHp;
+        player.maxSpeed = ship.speed;
+        player.shipColor = ship.color;
+        updateUI();
+        updateShopUI();
+    }
+}
+
+function updateUI() {
+    document.getElementById('ship-name').innerText = player.shipName;
+    document.getElementById('hp-display').innerText = `${player.hp}/${player.maxHp}`;
+    document.getElementById('gold-display').innerText = player.gold;
+    document.getElementById('cannon-level').innerText = `Nvl ${player.cannonLevel}`;
+}
+
+// --- CONTROLES Y DISPARO UNITARGET ---
 const leftZone = document.getElementById('left-zone');
 const joyBase = document.getElementById('joystick-base');
 const joyStick = document.getElementById('joystick-stick');
 const fireBtn = document.getElementById('fire-btn');
 
-// Control del Joystick
 leftZone.addEventListener('touchstart', (e) => {
     const touch = e.touches[0];
-    
-    // Si toca cerca de la esquina inferior izquierda, activa joystick
     joystick.active = true;
     joystick.startX = touch.clientX;
     joystick.startY = touch.clientY;
@@ -216,24 +395,19 @@ leftZone.addEventListener('touchstart', (e) => {
     joyBase.style.left = `${touch.clientX}px`;
     joyBase.style.top = `${touch.clientY}px`;
     joyBase.style.display = 'block';
-
-    player.targetX = null; // Cancela movimiento por toque
+    player.targetX = null;
 });
 
 leftZone.addEventListener('touchmove', (e) => {
     if (!joystick.active) return;
     const touch = e.touches[0];
-    joystick.currentX = touch.clientX;
-    joystick.currentY = touch.clientY;
-
-    const dx = joystick.currentX - joystick.startX;
-    const dy = joystick.currentY - joystick.startY;
+    const dx = touch.clientX - joystick.startX;
+    const dy = touch.clientY - joystick.startY;
     const dist = Math.min(Math.hypot(dx, dy), 40);
     const angle = Math.atan2(dy, dx);
 
     joystick.angle = angle;
     joystick.distance = dist / 40;
-
     joyStick.style.transform = `translate(${Math.cos(angle) * dist}px, ${Math.sin(angle) * dist}px)`;
 });
 
@@ -243,30 +417,29 @@ const endJoystick = () => {
     joyBase.style.display = 'none';
 };
 leftZone.addEventListener('touchend', endJoystick);
-leftZone.addEventListener('touchcancel', endJoystick);
 
-// Seleccionar Enemigo / Mover con Toque en Pantalla (Navegación tipo Pirate Storm)
 window.addEventListener('click', (e) => {
-    // Evitar si tocó controles UI
     if (e.clientY > window.innerHeight * 0.5 && e.clientX < window.innerWidth * 0.5) return;
-    if (e.target.id === 'fire-btn') return;
+    if (e.target.id === 'fire-btn' || e.target.closest('#shop-modal')) return;
 
-    // Convertir coordenadas de pantalla a coordenadas de mundo
     const worldX = e.clientX - canvas.width / 2 + player.x;
     const worldY = e.clientY - canvas.height / 2 + player.y;
 
-    // Verificar si tocó un enemigo para seleccionarlo
-    let clickedEnemy = null;
-    enemies.forEach(enemy => {
-        if (Math.hypot(enemy.x - worldX, enemy.y - worldY) < 35) {
-            clickedEnemy = enemy;
+    // Abrir puerto al tocarlo si estás dentro del área
+    if (inPortZone) {
+        let clickedPort = ports.some(p => Math.hypot(p.x - worldX, p.y - worldY) < 80);
+        if (clickedPort) {
+            toggleShop(true);
+            return;
         }
-    });
+    }
+
+    // Seleccionar Enemigo
+    let clickedEnemy = enemies.find(e => Math.hypot(e.x - worldX, e.y - worldY) < 35);
 
     if (clickedEnemy) {
         selectedEnemy = clickedEnemy;
     } else {
-        // Mover el barco al punto donde tocó
         player.targetX = worldX;
         player.targetY = worldY;
     }
@@ -274,50 +447,52 @@ window.addEventListener('click', (e) => {
 
 fireBtn.addEventListener('touchstart', (e) => {
     e.preventDefault();
-    shootCannons(player, selectedEnemy);
+    shootSingleTarget(player, selectedEnemy);
 });
 
-// --- LÓGICA DE DISPARO Y COMBATE ---
-function shootCannons(ship, target) {
+// SISTEMA DE DISPARO UNITARGET DIRECTO AL OBJETIVO
+function shootSingleTarget(ship, target) {
     if (ship.fireCooldown > 0) return;
-
-    // Disparo manual/automático si hay un objetivo cerca
-    let targetAngle = ship.angle;
-    if (target) {
-        const dist = Math.hypot(target.x - ship.x, target.y - ship.y);
-        if (dist <= ship.range) {
-            targetAngle = Math.atan2(target.y - ship.y, target.x - ship.x);
-        }
+    if (!target) {
+        showDamageText(ship.x, ship.y - 30, '¡Selecciona Objetivo!', '#facc15');
+        return;
     }
 
-    // Disparar cañones por babor y estribor (lados)
-    [-Math.PI / 2, Math.PI / 2].forEach(offset => {
-        const angle = targetAngle + offset;
-        cannonballs.push({
-            x: ship.x,
-            y: ship.y,
-            vx: Math.cos(angle) * 7,
-            vy: Math.sin(angle) * 7,
-            life: 35,
-            isPlayer: (ship === player)
-        });
-    });
+    const dist = Math.hypot(target.x - ship.x, target.y - ship.y);
+    if (dist > ship.range) {
+        showDamageText(ship.x, ship.y - 30, '¡Fuera de alcance!', '#f87171');
+        return;
+    }
 
-    // Humo en el cañón
-    createParticles(ship.x, ship.y, '#aaa', 5);
-    ship.fireCooldown = 30; // Cooldown entre descargas
+    // Lanzar ráfaga de balas dirigidas
+    const angle = Math.atan2(target.y - ship.y, target.x - ship.x);
+    for (let i = 0; i < 3; i++) {
+        setTimeout(() => {
+            cannonballs.push({
+                x: ship.x,
+                y: ship.y,
+                target: target,
+                damage: ship.cannonDamage || 15,
+                speed: 8,
+                isPlayer: (ship === player)
+            });
+        }, i * 90);
+    }
+
+    createParticles(ship.x, ship.y, '#aaa', 4);
+    ship.fireCooldown = 28;
 }
 
 function showDamageText(x, y, text, color = '#f87171') {
     damageTexts.push({ x, y, text, color, alpha: 1, vy: -1 });
 }
 
-// --- BUCLE PRINCIPAL (UPDATE) ---
+// --- UPDATE ---
 function update() {
     waveOffset += 0.03;
     if (player.fireCooldown > 0) player.fireCooldown--;
 
-    // Movimiento Jugador (Joystick o Destino)
+    // Movimiento
     if (joystick.active && joystick.distance > 0.1) {
         player.angle = joystick.angle;
         player.speed = player.maxSpeed * joystick.distance;
@@ -335,67 +510,47 @@ function update() {
             player.targetY = null;
         }
     } else {
-        player.speed *= 0.92; // Fricción suave en el agua
+        player.speed *= 0.92;
     }
 
-    // Aplicar movimiento y colisión con islas
-    let nextX = player.x + Math.cos(player.angle) * player.speed;
-    let nextY = player.y + Math.sin(player.angle) * player.speed;
+    player.x += Math.cos(player.angle) * player.speed;
+    player.y += Math.sin(player.angle) * player.speed;
 
-    islands.forEach(island => {
-        if (Math.hypot(nextX - island.x, nextY - island.y) < island.radius + 15) {
-            player.speed = 0;
-            nextX = player.x;
-            nextY = player.y;
-        }
-    });
+    // Verificar Zona de Puerto
+    inPortZone = ports.some(p => Math.hypot(player.x - p.x, player.y - p.y) < p.radius);
+    document.getElementById('port-tag').style.display = inPortZone ? 'block' : 'none';
 
-    player.x = nextX;
-    player.y = nextY;
-
-    // Recoger Cofres de Botín
+    // Recoger Cofres
     for (let i = lootChests.length - 1; i >= 0; i--) {
         let chest = lootChests[i];
         if (Math.hypot(player.x - chest.x, player.y - chest.y) < 30) {
             player.gold += chest.gold;
-            player.hp = Math.min(player.maxHp, player.hp + 15); // Cura 15 HP
             showDamageText(player.x, player.y - 20, `+${chest.gold} Oro`, '#facc15');
-            document.getElementById('gold-display').innerText = player.gold;
-            document.getElementById('hp-display').innerText = `${player.hp}/${player.maxHp}`;
+            updateUI();
             lootChests.splice(i, 1);
         }
     }
 
-    // Actualizar Balas de Cañón
+    // Actualizar Balas Guiadas (Unitarget)
     for (let i = cannonballs.length - 1; i >= 0; i--) {
         let b = cannonballs[i];
-        b.x += b.vx;
-        b.y += b.vy;
-        b.life--;
+        
+        if (b.target && b.target.hp > 0) {
+            const angle = Math.atan2(b.target.y - b.y, b.target.x - b.x);
+            b.x += Math.cos(angle) * b.speed;
+            b.y += Math.sin(angle) * b.speed;
 
-        // Impacto de balas
-        if (b.isPlayer) {
-            enemies.forEach(e => {
-                if (Math.hypot(e.x - b.x, e.y - b.y) < 22) {
-                    const damage = Math.floor(12 + Math.random() * 8);
-                    e.hp -= damage;
-                    b.life = 0;
-                    createParticles(b.x, b.y, '#ff8c00', 8);
-                    showDamageText(e.x, e.y, `-${damage}`);
-                }
-            });
-        } else {
-            if (Math.hypot(player.x - b.x, player.y - b.y) < 22) {
-                const damage = Math.floor(8 + Math.random() * 6);
-                player.hp = Math.max(0, player.hp - damage);
-                b.life = 0;
-                createParticles(b.x, b.y, '#ef4444', 8);
-                showDamageText(player.x, player.y, `-${damage}`, '#ef4444');
-                document.getElementById('hp-display').innerText = `${player.hp}/${player.maxHp}`;
+            // Impacto
+            if (Math.hypot(b.target.x - b.x, b.target.y - b.y) < 15) {
+                b.target.hp -= b.damage;
+                createParticles(b.x, b.y, '#ff8c00', 6);
+                showDamageText(b.target.x, b.target.y, `-${b.damage}`);
+                if (!b.isPlayer) updateUI();
+                cannonballs.splice(i, 1);
             }
+        } else {
+            cannonballs.splice(i, 1);
         }
-
-        if (b.life <= 0) cannonballs.splice(i, 1);
     }
 
     // IA Enemigos
@@ -403,48 +558,34 @@ function update() {
         if (e.fireCooldown > 0) e.fireCooldown--;
 
         const distToPlayer = Math.hypot(player.x - e.x, player.y - e.y);
-
-        if (distToPlayer < 350) {
+        if (distToPlayer < 300) {
             e.angle = Math.atan2(player.y - e.y, player.x - e.x);
-
-            if (distToPlayer > 140) {
+            if (distToPlayer > 130) {
                 e.x += Math.cos(e.angle) * e.speed;
                 e.y += Math.sin(e.angle) * e.speed;
             } else {
-                // Ráfaga enemiga cuando está cerca
-                shootCannons(e, player);
+                shootSingleTarget(e, player);
             }
         }
 
-        // Muerte del enemigo
         if (e.hp <= 0) {
-            createParticles(e.x, e.y, '#e63946', 20);
-            
-            // Soltar Cofre
-            lootChests.push({ x: e.x, y: e.y, gold: 20 + Math.floor(Math.random() * 20) });
-
+            createParticles(e.x, e.y, '#e63946', 18);
+            lootChests.push({ x: e.x, y: e.y, gold: 25 + Math.floor(Math.random() * 25) });
             if (selectedEnemy === e) selectedEnemy = null;
-            player.score++;
-            document.getElementById('score-display').innerText = player.score;
-            
             enemies.splice(index, 1);
             setTimeout(spawnEnemy, 4000);
         }
     });
 
-    // Partículas y Textos de Daño
+    // Partículas y Texto
     for (let i = particles.length - 1; i >= 0; i--) {
         let p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.alpha -= 0.04;
+        p.x += p.vx; p.y += p.vy; p.alpha -= 0.04;
         if (p.alpha <= 0) particles.splice(i, 1);
     }
-
     for (let i = damageTexts.length - 1; i >= 0; i--) {
         let dt = damageTexts[i];
-        dt.y += dt.vy;
-        dt.alpha -= 0.02;
+        dt.y += dt.vy; dt.alpha -= 0.02;
         if (dt.alpha <= 0) damageTexts.splice(i, 1);
     }
 }
@@ -462,53 +603,53 @@ function createParticles(x, y, color, count) {
 
 // --- RENDERIZADO 2D ---
 function render() {
-    // Fondo del mar
     ctx.fillStyle = '#0f385d';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.save();
-    // Cámara centrada en el jugador
     ctx.translate(canvas.width / 2 - player.x, canvas.height / 2 - player.y);
 
-    // Dibujar olas de mar
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    // Olas
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
     ctx.lineWidth = 2;
-    const spacing = 120;
-    const startX = Math.floor((player.x - canvas.width) / spacing) * spacing;
-    const endX = Math.floor((player.x + canvas.width) / spacing) * spacing;
-    const startY = Math.floor((player.y - canvas.height) / spacing) * spacing;
-    const endY = Math.floor((player.y + canvas.height) / spacing) * spacing;
-
-    for (let x = startX; x < endX; x += spacing) {
-        for (let y = startY; y < endY; y += spacing) {
+    for (let x = player.x - canvas.width; x < player.x + canvas.width; x += 120) {
+        for (let y = player.y - canvas.height; y < player.y + canvas.height; y += 120) {
             ctx.beginPath();
-            ctx.arc(x + Math.sin(waveOffset + y) * 10, y + Math.cos(waveOffset + x) * 10, 15, 0, Math.PI);
+            ctx.arc(x + Math.sin(waveOffset + y) * 8, y + Math.cos(waveOffset + x) * 8, 12, 0, Math.PI);
             ctx.stroke();
         }
     }
 
-    // Dibujar Islas
+    // Islas y Puertos
     islands.forEach(island => {
-        ctx.fillStyle = '#c2a649'; // Playa
+        ctx.fillStyle = island.isPort ? '#eab308' : '#c2a649';
         ctx.beginPath();
         ctx.arc(island.x, island.y, island.radius + 6, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = '#2d6a4f'; // Selva/Centro
+        ctx.fillStyle = island.isPort ? '#15803d' : '#2d6a4f';
         ctx.beginPath();
         ctx.arc(island.x, island.y, island.radius, 0, Math.PI * 2);
         ctx.fill();
+
+        // Bandera de Puerto Comercial
+        if (island.isPort) {
+            ctx.fillStyle = '#ef4444';
+            ctx.fillRect(island.x - 5, island.y - 15, 12, 8);
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(island.x - 5, island.y - 15, 2, 20);
+        }
     });
 
-    // Dibujar Cofres de Botín
-    lootChests.forEach(chest => {
+    // Cofres
+    lootChests.forEach(c => {
         ctx.fillStyle = '#b8860b';
-        ctx.fillRect(chest.x - 8, chest.y - 6, 16, 12);
+        ctx.fillRect(c.x - 7, c.y - 5, 14, 10);
         ctx.fillStyle = '#ffd700';
-        ctx.fillRect(chest.x - 3, chest.y - 3, 6, 6);
+        ctx.fillRect(c.x - 2, c.y - 2, 4, 4);
     });
 
-    // Dibujar Partículas
+    // Partículas
     particles.forEach(p => {
         ctx.globalAlpha = p.alpha;
         ctx.fillStyle = p.color;
@@ -518,24 +659,21 @@ function render() {
     });
     ctx.globalAlpha = 1;
 
-    // Dibujar Balas
+    // Balas
     ctx.fillStyle = '#111';
     cannonballs.forEach(b => {
         ctx.beginPath();
-        ctx.arc(b.x, b.y, 3.5, 0, Math.PI * 2);
+        ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
         ctx.fill();
     });
 
-    // Dibujar Enemigos
-    enemies.forEach(e => {
-        const isSelected = (e === selectedEnemy);
-        drawShip(e.x, e.y, e.angle, '#e63946', e.hp, e.maxHp, isSelected);
-    });
+    // Enemigos
+    enemies.forEach(e => drawShip(e.x, e.y, e.angle, '#e63946', e.hp, e.maxHp, (e === selectedEnemy)));
 
-    // Dibujar Jugador
-    drawShip(player.x, player.y, player.angle, '#2a9d8f', player.hp, player.maxHp, false);
+    // Jugador
+    drawShip(player.x, player.y, player.angle, player.shipColor, player.hp, player.maxHp, false);
 
-    // Dibujar Números de Daño / Mensajes Flotantes
+    // Textos de Daño
     damageTexts.forEach(dt => {
         ctx.globalAlpha = dt.alpha;
         ctx.fillStyle = dt.color;
@@ -547,70 +685,48 @@ function render() {
     ctx.restore();
 }
 
-// Función para renderizar los Barcos 2D
 function drawShip(x, y, angle, hullColor, hp, maxHp, isSelected) {
     ctx.save();
     ctx.translate(x, y);
 
-    // Círculo de Objetivo Seleccionado (Pirate Storm Style)
     if (isSelected) {
         ctx.strokeStyle = '#facc15';
         ctx.lineWidth = 2;
-        ctx.setLineDash([6, 4]);
+        ctx.setLineDash([5, 4]);
         ctx.beginPath();
-        ctx.arc(0, 0, 32, 0, Math.PI * 2);
+        ctx.arc(0, 0, 30, 0, Math.PI * 2);
         ctx.stroke();
         ctx.setLineDash([]);
     }
 
     ctx.rotate(angle);
 
-    // Sombras
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
-    ctx.beginPath();
-    ctx.ellipse(3, 3, 20, 10, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Casco del barco (2D)
+    // Casco
     ctx.fillStyle = hullColor;
     ctx.beginPath();
-    ctx.moveTo(22, 0); // Proa (Punta)
-    ctx.quadraticCurveTo(0, 12, -16, 10); // Lado babor
-    ctx.lineTo(-20, 0); // Popa (Atrás)
-    ctx.quadraticCurveTo(0, -12, 22, 0); // Lado estribor
+    ctx.moveTo(20, 0);
+    ctx.quadraticCurveTo(0, 11, -15, 9);
+    ctx.lineTo(-18, 0);
+    ctx.quadraticCurveTo(0, -11, 20, 0);
     ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = '#1d3557';
+    ctx.strokeStyle = '#111';
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Cubierta de Madera
-    ctx.fillStyle = '#8d5b4c';
-    ctx.fillRect(-10, -4, 20, 8);
-
-    // Velas Blancas
-    ctx.fillStyle = '#f8f9fa';
-    ctx.fillRect(-6, -11, 4, 22); // Vela mayor
-    ctx.fillRect(8, -8, 3, 16);  // Vela delantera
+    // Velas
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(-5, -10, 4, 20);
 
     ctx.restore();
 
-    // Barra de Vida 2D sobre el barco
-    const barWidth = 36;
-    const barHeight = 5;
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-    ctx.fillRect(x - barWidth / 2, y - 28, barWidth, barHeight);
-
-    const healthPercent = Math.max(0, hp / maxHp);
-    ctx.fillStyle = healthPercent > 0.4 ? '#4ade80' : '#ef4444';
-    ctx.fillRect(x - barWidth / 2, y - 28, barWidth * healthPercent, barHeight);
-    
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x - barWidth / 2, y - 28, barWidth, barHeight);
+    // Barra de Vida
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(x - 18, y - 26, 36, 5);
+    ctx.fillStyle = (hp / maxHp) > 0.4 ? '#4ade80' : '#ef4444';
+    ctx.fillRect(x - 18, y - 26, (hp / maxHp) * 36, 5);
 }
 
-// Bucle Principal
 function loop() {
     update();
     render();
