@@ -3,21 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Pirate Storm Mobile - v0.05</title>
+    <title>Pirate Storm Mobile - v0.06</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
         body, html { width: 100%; height: 100%; overflow: hidden; background-color: #000; font-family: Arial, sans-serif; }
         #game-container { width: 100vw; height: 100vh; }
         
-        /* Interfaz UI Móvil superior y botones */
+        /* Interfaz UI Móvil superior */
         #hud {
             position: absolute; top: 10px; left: 10px; right: 10px;
             display: flex; justify-content: space-between; align-items: center;
             pointer-events: none; z-index: 10;
         }
         .hud-box {
-            background: rgba(0,0,0,0.7); color: #fff; padding: 8px 12px;
+            background: rgba(0,0,0,0.75); color: #fff; padding: 8px 12px;
             border-radius: 8px; border: 1px solid #ffd700; font-size: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
         }
         #controls-panel {
             position: absolute; bottom: 15px; right: 15px;
@@ -26,11 +27,11 @@
         .btn-game {
             background: #d90429; color: white; border: 2px solid #fff;
             padding: 12px 16px; border-radius: 50%; font-weight: bold;
-            font-size: 14px; box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+            font-size: 13px; box-shadow: 0 4px 6px rgba(0,0,0,0.5);
         }
         .btn-game:active { transform: scale(0.95); background: #ef233c; }
 
-        /* Ventana emergente (Subasta / Puerto / Mejoras) */
+        /* Ventanas Modales */
         #modal {
             display: none; position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%); width: 85%; max-width: 400px;
@@ -38,7 +39,7 @@
             border-radius: 12px; padding: 15px; z-index: 20; box-shadow: 0 0 20px #000;
         }
         #modal h2 { color: #ffd700; margin-bottom: 10px; font-size: 18px; text-align: center; }
-        .modal-item { display: flex; justify-content: space-between; margin: 8px 0; background: rgba(255,255,255,0.1); padding: 8px; border-radius: 6px; }
+        .modal-item { display: flex; justify-content: space-between; align-items: center; margin: 8px 0; background: rgba(255,255,255,0.1); padding: 8px; border-radius: 6px; }
         .close-btn { background: #778da9; color: white; border: none; padding: 6px 12px; border-radius: 4px; float: right; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
@@ -51,7 +52,8 @@
             <b>Nivel:</b> 1 | <b>Oro:</b> <span id="gold-val">1000</span>
         </div>
         <div class="hud-box" id="map-info">
-            <b>Mapa 1:</b> Bahía del Inicio
+            <b>Mapa:</b> Bahía del Inicio (1/10)<br>
+            <span style="color:#ffd700; font-size:10px;">Busca el Portal para viajar</span>
         </div>
     </div>
 
@@ -60,7 +62,6 @@
         <button class="btn-game" style="background:#e76f51;" onclick="openModal('subasta')">⚖️ Subasta</button>
     </div>
 
-    <!-- Ventana Modal de Puerto y Subastas -->
     <div id="modal">
         <button class="close-btn" onclick="closeModal()">X</button>
         <h2 id="modal-title">Puerto</h2>
@@ -71,89 +72,143 @@
 
     <script>
         // =============================================================
-        // 1. BASE DE DATOS DEL JUEGO
+        // 1. BASE DE DATOS
         // =============================================================
         const SHIPS_DB = [
-            { id: 1, name: "Balsa de Madera", hp: 100, speed: 100, price: 0 },
-            { id: 2, name: "Sloop de Caza", hp: 250, speed: 120, price: 500 },
-            { id: 3, name: "Carabela Mercante", hp: 500, speed: 110, price: 1200 },
-            { id: 4, name: "Bergantín Filibustero", hp: 900, speed: 130, price: 2500 },
-            { id: 5, name: "Goleta de Guerra", hp: 1500, speed: 140, price: 5000 },
-            { id: 6, name: "Fragata de Asalto", hp: 2300, speed: 125, price: 10000 },
-            { id: 7, name: "Galeón Real", hp: 3500, speed: 115, price: 20000 },
-            { id: 8, name: "Acorazado del Abismo", hp: 5000, speed: 110, price: 40000 },
-            { id: 9, name: "Leviatán de Acero", hp: 7500, speed: 120, price: 80000 },
-            { id: 10, name: "Señor de las Tormentas", hp: 12000, speed: 135, price: 150000 }
+            { id: 1, name: "Balsa de Madera", hp: 100, speed: 120, price: 0 },
+            { id: 2, name: "Sloop de Caza", hp: 250, speed: 140, price: 500 },
+            { id: 3, name: "Carabela Mercante", hp: 500, speed: 130, price: 1200 },
+            { id: 4, name: "Bergantín Filibustero", hp: 900, speed: 150, price: 2500 },
+            { id: 5, name: "Goleta de Guerra", hp: 1500, speed: 160, price: 5000 },
+            { id: 6, name: "Fragata de Asalto", hp: 2300, speed: 145, price: 10000 },
+            { id: 7, name: "Galeón Real", hp: 3500, speed: 135, price: 20000 },
+            { id: 8, name: "Acorazado del Abismo", hp: 5000, speed: 130, price: 40000 },
+            { id: 9, name: "Leviatán de Acero", hp: 7500, speed: 140, price: 80000 },
+            { id: 10, name: "Señor de las Tormentas", hp: 12000, speed: 155, price: 150000 }
         ];
 
         const MAPS_DB = [
-            "Bahía del Inicio", "Arrecife Tormentoso", "Isla de los Esqueletos",
-            "Mar del Abismo", "Costa de los Piratas", "Cueva del Leviatán",
-            "Furia Volcánica", "Océano Helado", "Foso de las Sirenas", "Santuario del Señor"
+            { name: "Bahía del Inicio", color: 0x0096c7, enemyColor: 0x8b0000 },
+            { name: "Arrecife Tormentoso", color: 0x0077b6, enemyColor: 0x480ca8 },
+            { name: "Isla de los Esqueletos", color: 0x03045e, enemyColor: 0x2b9348 },
+            { name: "Mar del Abismo", color: 0x14213d, enemyColor: 0xd90429 },
+            { name: "Costa de los Piratas", color: 0x005f73, enemyColor: 0xca6702 },
+            { name: "Cueva del Leviatán", color: 0x0a9396, enemyColor: 0x9b5de5 },
+            { name: "Furia Volcánica", color: 0x3d0066, enemyColor: 0xf15bb5 },
+            { name: "Océano Helado", color: 0x90e0ef, enemyColor: 0x00f5d4 },
+            { name: "Foso de las Sirenas", color: 0x00b4d8, enemyColor: 0xff006e },
+            { name: "Santuario del Señor", color: 0x10002b, enemyColor: 0xffbe0b }
         ];
 
-        // Estado Global del Jugador
         window.playerState = {
             gold: 1000,
             level: 1,
             shipIndex: 0,
-            currentMap: 0,
+            currentMapIndex: 0,
             upgrades: { proa: 1, quilla: 1, cubierta: 1, velas: 1 }
         };
 
         // =============================================================
-        // 2. MOTOR DEL JUEGO (Phaser 3)
+        // 2. MOTOR DEL JUEGO
         // =============================================================
         class GameScene extends Phaser.Scene {
             constructor() { super({ key: 'GameScene' }); }
 
             create() {
-                // Fondo Agua
-                this.add.rectangle(0, 0, 4000, 4000, 0x0096c7).setOrigin(0);
+                const MAP_WIDTH = 3000;
+                const MAP_HEIGHT = 3000;
+                const currentMap = MAPS_DB[window.playerState.currentMapIndex];
 
-                // Jugador
-                this.player = this.add.container(400, 300);
+                // A) Definir límites del mundo físico
+                this.physics.world.setBounds(0, 0, MAP_WIDTH, MAP_HEIGHT);
+
+                // B) Ocean Grid (Fondo)
+                this.add.rectangle(0, 0, MAP_WIDTH, MAP_HEIGHT, currentMap.color).setOrigin(0);
+                
+                // Línea de borde del mapa
+                const border = this.add.graphics();
+                border.lineStyle(6, 0xffd700, 0.8);
+                border.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+
+                // C) Portal para cambiar de Mapa (Ubicado a la derecha arriba)
+                this.portal = this.add.container(MAP_WIDTH - 200, 200);
+                const portalRing = this.add.circle(0, 0, 35, 0xffd700, 0.5);
+                const portalCore = this.add.circle(0, 0, 20, 0xffffff);
+                const portalText = this.add.text(-30, 42, 'PORTAL', { font: '11px Arial', fill: '#ffd700', fontWeight: 'bold' });
+                this.portal.add([portalRing, portalCore, portalText]);
+                this.physics.world.enable(this.portal);
+
+                // D) Jugador
+                this.player = this.add.container(400, 400);
                 const hull = this.add.triangle(0, 0, 0, -22, -12, 15, 12, 15, 0x5c3d11);
                 const sail = this.add.rectangle(0, 0, 5, 18, 0xffffff);
                 this.player.add([hull, sail]);
                 this.physics.world.enable(this.player);
+                this.player.body.setCollideWorldBounds(true);
 
-                // Monstruo Marino (Enemigo Unitarget)
-                this.enemy = this.add.container(600, 350);
-                const monster = this.add.circle(0, 0, 20, 0x8b0000);
-                this.enemy.add(monster);
-                this.enemy.setInteractive(new Phaser.Geom.Circle(0, 0, 25), Phaser.Geom.Circle.Contains);
+                // E) CÁMARA SIGUIENDO AL JUGADOR
+                this.cameras.main.setBounds(0, 0, MAP_WIDTH, MAP_HEIGHT);
+                this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
 
-                this.reticle = this.add.graphics();
+                // F) Generación de Múltiples Enemigos
+                this.enemies = this.add.group();
                 this.selectedEnemy = null;
+                this.reticle = this.add.graphics();
 
-                // Seleccionar Enemigo
-                this.enemy.on('pointerdown', (pointer, x, y, event) => {
-                    event.stopPropagation();
-                    this.selectedEnemy = this.enemy;
-                });
+                for (let i = 0; i < 8; i++) {
+                    const rx = Phaser.Math.Between(300, MAP_WIDTH - 300);
+                    const ry = Phaser.Math.Between(300, MAP_HEIGHT - 300);
+                    
+                    const enemy = this.add.container(rx, ry);
+                    const enemySprite = this.add.circle(0, 0, 22, currentMap.enemyColor);
+                    const enemyInner = this.add.circle(0, 0, 12, 0x000000, 0.4);
+                    enemy.add([enemySprite, enemyInner]);
+                    
+                    enemy.setInteractive(new Phaser.Geom.Circle(0, 0, 25), Phaser.Geom.Circle.Contains);
+                    
+                    enemy.on('pointerdown', (pointer, x, y, event) => {
+                        event.stopPropagation();
+                        this.selectedEnemy = enemy;
+                    });
 
-                // Moverse al tocar el agua
+                    this.enemies.add(enemy);
+                }
+
+                // G) Navegación por Táctil
                 this.input.on('pointerdown', (pointer) => {
                     this.selectedEnemy = null;
                     const speed = SHIPS_DB[window.playerState.shipIndex].speed;
-                    this.physics.moveTo(this.player, pointer.worldX, pointer.worldY, speed);
-                    const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, pointer.worldX, pointer.worldY);
+                    
+                    // Convertir coordenadas de pantalla a coordenadas del mundo 3D/Map
+                    const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+                    
+                    this.physics.moveTo(this.player, worldPoint.x, worldPoint.y, speed);
+                    const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, worldPoint.x, worldPoint.y);
                     this.player.setRotation(angle + Math.PI / 2);
+                });
+
+                // H) Detección de entrada al portal
+                this.physics.add.overlap(this.player, this.portal, () => {
+                    if (window.playerState.currentMapIndex < MAPS_DB.length - 1) {
+                        window.playerState.currentMapIndex++;
+                        this.scene.restart(); // Recargar la escena en el nuevo mapa
+                        updateHUD();
+                    }
                 });
             }
 
             update() {
+                // Dibujar la mira Unitarget si hay un enemigo fijado
                 this.reticle.clear();
                 if (this.selectedEnemy) {
                     this.reticle.lineStyle(2, 0xff0000);
-                    this.reticle.strokeCircle(this.selectedEnemy.x, this.selectedEnemy.y, 30);
+                    this.reticle.strokeCircle(this.selectedEnemy.x, this.selectedEnemy.y, 32);
                 }
             }
         }
 
         // =============================================================
-        // 3. FUNCIONES DE INTERFAZ Y MODALES
+        // 3. INTERFAZ DE PUERTO Y SUBASTAS
         // =============================================================
         function openModal(type) {
             const modal = document.getElementById('modal');
@@ -170,7 +225,7 @@
                     <div class="modal-item"><span>Velas (Nivel ${window.playerState.upgrades.velas})</span> <button onclick="upgradePart('velas')">Mejorar (200 Oro)</button></div>
                 `;
             } else if (type === 'subasta') {
-                title.innerText = "Subasta de Barcos (10 Barcos)";
+                title.innerText = "Subasta de Barcos";
                 let html = "";
                 SHIPS_DB.forEach((ship, index) => {
                     html += `<div class="modal-item">
@@ -182,9 +237,7 @@
             }
         }
 
-        function closeModal() {
-            document.getElementById('modal').style.display = 'none';
-        }
+        function closeModal() { document.getElementById('modal').style.display = 'none'; }
 
         function buyShip(index) {
             const ship = SHIPS_DB[index];
@@ -212,13 +265,19 @@
         function updateHUD() {
             document.getElementById('gold-val').innerText = window.playerState.gold;
             const currentShip = SHIPS_DB[window.playerState.shipIndex];
+            const currentMap = MAPS_DB[window.playerState.currentMapIndex];
+
             document.getElementById('player-stats').innerHTML = `
                 <b>Barco:</b> ${currentShip.name}<br>
                 <b>Nivel:</b> ${window.playerState.level} | <b>Oro:</b> <span id="gold-val">${window.playerState.gold}</span>
             `;
+            document.getElementById('map-info').innerHTML = `
+                <b>Mapa:</b> ${currentMap.name} (${window.playerState.currentMapIndex + 1}/10)<br>
+                <span style="color:#ffd700; font-size:10px;">Busca el Portal para viajar</span>
+            `;
         }
 
-        // Configuración e inicio de Phaser
+        // Inicializar Juego
         const config = {
             type: Phaser.AUTO,
             width: window.innerWidth,
